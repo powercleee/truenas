@@ -1,1 +1,1 @@
-# truenas
+# TrueNAS Scale 25.10
