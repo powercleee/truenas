@@ -74,6 +74,7 @@ The following ZFS datasets were created with optimized record sizes:
 ### File Locations
 
 - **User/Group Reference:** `/root/users_groups_reference.txt`
+- **Docker Environment File:** `/root/docker_users.env`
 - **Deployment Summary:** `/root/truenas_deployment_summary.md` (this file)
 {% if snapshot_method == 'sanoid' %}
 - **Sanoid Config:** `/etc/sanoid/sanoid.conf`
@@ -87,6 +88,46 @@ The following ZFS datasets were created with optimized record sizes:
 ## Usage Examples
 
 ### Docker Compose Integration
+
+**Using the Docker Environment File:**
+
+First, source the environment file in your shell or reference it in your compose file:
+
+```bash
+# Option 1: Source in shell
+source /root/docker_users.env
+docker-compose up
+
+# Option 2: Use env_file in docker-compose.yml
+```
+
+**Example docker-compose.yml:**
+
+```yaml
+version: '3.8'
+services:
+  plex:
+    image: plexinc/pms-docker
+    user: "${PLEX_UID}:${PLEX_GID}"
+    # Alternative: user: "${PLEX_UID}:${MEDIA_GID}"
+    volumes:
+      - /mnt/{{ zfs_pool }}/apps/plex:/config
+      - /mnt/{{ zfs_pool }}/media:/data:ro
+      - /mnt/{{ zfs_pool }}/logs/plex:/logs
+    environment:
+      - PLEX_UID=${PLEX_UID}
+      - PLEX_GID=${MEDIA_GID}
+
+  grafana:
+    image: grafana/grafana
+    user: "${GRAFANA_UID}:${GRAFANA_GID}"
+    volumes:
+      - /mnt/{{ zfs_pool }}/apps/grafana:/var/lib/grafana
+    env_file:
+      - /root/docker_users.env
+```
+
+**Static UID/GID Example (without env file):**
 
 ```yaml
 version: '3.8'

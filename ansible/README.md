@@ -185,6 +185,37 @@ zfs_settings:
 
 ### Docker Compose Integration
 
+**Using the Generated Environment File:**
+
+The deployment creates `/root/docker_users.env` with all UID/GID mappings:
+
+```yaml
+version: '3.8'
+services:
+  grafana:
+    image: grafana/grafana
+    user: "${GRAFANA_UID}:${GRAFANA_GID}"
+    volumes:
+      - /mnt/tank/apps/grafana:/var/lib/grafana
+      - /mnt/tank/logs/grafana:/var/log/grafana
+    env_file:
+      - /root/docker_users.env
+    environment:
+      - GF_PATHS_DATA=/var/lib/grafana
+      - GF_PATHS_LOGS=/var/log/grafana
+
+  plex:
+    image: plexinc/pms-docker
+    user: "${PLEX_UID}:${MEDIA_GID}"
+    volumes:
+      - /mnt/tank/apps/plex:/config
+      - /mnt/tank/media:/data:ro
+    env_file:
+      - /root/docker_users.env
+```
+
+**Static UID/GID (without environment file):**
+
 ```yaml
 version: '3.8'
 services:
@@ -278,6 +309,7 @@ ansible truenas -m shell -a "systemctl status sanoid.timer"
 After deployment, check `/root/` on your TrueNAS system for:
 
 - `users_groups_reference.txt` - Complete user/group listing
+- `docker_users.env` - Environment file with all UID/GID mappings for Docker Compose
 - `truenas_deployment_summary.md` - Deployment details and usage examples
 - Snapshot management scripts in `/usr/local/bin/`
 
@@ -292,7 +324,7 @@ After deployment, check `/root/` on your TrueNAS system for:
 The configured snapshot system provides:
 
 - **Critical Data**: 15-minute snapshots, 24-hour retention
-- **Application Data**: 4-hour snapshots, 7-day retention  
+- **Application Data**: 4-hour snapshots, 7-day retention
 - **Media Content**: Weekly snapshots, 4-week retention
 - **Log Data**: Daily snapshots, 7-day retention
 

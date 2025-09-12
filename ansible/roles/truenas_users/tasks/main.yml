@@ -74,3 +74,15 @@
   tags:
     - users
     - documentation
+
+- name: Generate Docker Compose environment file
+  template:
+    src: docker_users.env.j2
+    dest: /root/docker_users.env
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - users
+    - documentation
+    - docker
