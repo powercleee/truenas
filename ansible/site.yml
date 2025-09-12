@@ -53,7 +53,7 @@
           - "1. Deploy your containerized services using the created users and datasets"
           - "2. Configure application-specific permissions as needed"
           - "3. Monitor snapshot operations and adjust retention policies if required"
-          - "4. Review generated reference files in /root/"
+          - "4. Review generated reference files in /root/ (users_groups_reference.txt, docker_users.env)"
       tags: always
 
     - name: Generate deployment summary
