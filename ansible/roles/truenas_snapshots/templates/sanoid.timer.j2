@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Sanoid every 15 minutes
+Requires=sanoid.service
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,215 @@
+---
+- name: Create main datasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "{{ item.recordsize }}"
+      compression: "{{ item.compression | default(default_compression) }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ main_datasets }}"
+  tags:
+    - datasets
+    - main_datasets
+
+- name: Create container runtime datasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "{{ item.recordsize }}"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ container_datasets }}"
+  tags:
+    - datasets
+    - container_datasets
+
+- name: Create application datasets
+  community.general.zfs:
+    name: "{{ zfs_pool }}/apps/{{ item.1 }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "128K"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ app_categories | dict2items | subelements('value') }}"
+  tags:
+    - datasets
+    - app_datasets
+
+- name: Create media subdatasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "{{ item.recordsize }}"
+      compression: "{{ item.compression | default(default_compression) }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ media_subdatasets }}"
+  tags:
+    - datasets
+    - media_datasets
+
+- name: Create download subdatasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "{{ item.recordsize }}"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ download_subdatasets }}"
+  tags:
+    - datasets
+    - download_datasets
+
+- name: Create database datasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "{{ item.recordsize }}"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ database_datasets }}"
+  tags:
+    - datasets
+    - database_datasets
+
+- name: Create backup subdatasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "{{ item.recordsize }}"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ backup_subdatasets }}"
+  tags:
+    - datasets
+    - backup_datasets
+
+- name: Create log datasets for all services
+  community.general.zfs:
+    name: "{{ zfs_pool }}/logs/{{ item }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "128K"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ all_services + system_logs }}"
+  tags:
+    - datasets
+    - log_datasets
+
+- name: Create system datasets
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "{{ item.recordsize }}"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+      xattr: "{{ default_xattr }}"
+  loop: "{{ system_datasets }}"
+  tags:
+    - datasets
+    - system_datasets
+
+- name: Apply special recordsize adjustments
+  community.general.zfs:
+    name: "{{ item.dataset }}"
+    state: present
+    extra_zfs_properties:
+      recordsize: "{{ item.recordsize }}"
+  loop: "{{ special_recordsizes }}"
+  tags:
+    - datasets
+    - special_adjustments
+
+- name: Create mountpoints and set permissions for application directories
+  file:
+    path: "/mnt/{{ zfs_pool }}/apps/{{ item.1 }}"
+    state: directory
+    owner: "{{ item.1 }}"
+    group: "{{ item.0.key }}"
+    mode: '0755'
+  loop: "{{ app_categories | dict2items | subelements('value') }}"
+  tags:
+    - datasets
+    - permissions
+
+- name: Create mountpoints and set permissions for database directories
+  file:
+    path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: '0700'
+  loop: "{{ database_datasets }}"
+  when: item.owner is defined and item.group is defined
+  tags:
+    - datasets
+    - permissions
+    - database_permissions
+
+- name: Set permissions for media directories
+  file:
+    path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+    state: directory
+    owner: plex
+    group: media
+    mode: '0775'
+  loop: "{{ media_subdatasets }}"
+  tags:
+    - datasets
+    - permissions
+    - media_permissions
+
+- name: Set permissions for download directories
+  file:
+    path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+    state: directory
+    owner: qbittorrent
+    group: download
+    mode: '0775'
+  loop: "{{ download_subdatasets }}"
+  tags:
+    - datasets
+    - permissions
+    - download_permissions
+
+- name: Create and set permissions for log directories
+  file:
+    path: "/mnt/{{ zfs_pool }}/logs/{{ item }}"
+    state: directory
+    owner: "{{ item }}"
+    group: monitor
+    mode: '0755'
+  loop: "{{ all_services }}"
+  tags:
+    - datasets
+    - permissions
+    - log_permissions
+
+- name: Set permissions for system log directories
+  file:
+    path: "/mnt/{{ zfs_pool }}/logs/{{ item }}"
+    state: directory
+    owner: root
+    group: monitor
+    mode: '0755'
+  loop: "{{ system_logs }}"
+  tags:
+    - datasets
+    - permissions
+    - system_log_permissions

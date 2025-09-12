@@ -1,0 +1,74 @@
+# TrueNAS SCALE Users and Groups Reference
+# ==========================================
+# Generated: {{ ansible_date_time.iso8601 }}
+
+## Service Groups ({{ service_groups | length }} groups)
+{% for group in service_groups %}
+- {{ group.name }} ({{ group.gid }}): {{ group.description }}
+{% endfor %}
+
+## Service Users by Category ({{ service_users | length }} users total)
+
+### Media Services ({{ service_users | selectattr('category', 'equalto', 'Media') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Media') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Download Services ({{ service_users | selectattr('category', 'equalto', 'Download') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Download') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Security Services ({{ service_users | selectattr('category', 'equalto', 'Security') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Security') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Web Services ({{ service_users | selectattr('category', 'equalto', 'Web') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Web') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### DevOps Services ({{ service_users | selectattr('category', 'equalto', 'DevOps') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'DevOps') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Monitoring Services ({{ service_users | selectattr('category', 'equalto', 'Monitoring') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Monitoring') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Container Management Services ({{ service_users | selectattr('category', 'equalto', 'Containers') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Containers') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Storage Services ({{ service_users | selectattr('category', 'equalto', 'Storage') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Storage') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Network Services ({{ service_users | selectattr('category', 'equalto', 'Network') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Network') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Automation Services ({{ service_users | selectattr('category', 'equalto', 'Automation') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Automation') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+### Database Services ({{ service_users | selectattr('category', 'equalto', 'Database') | list | length }} users)
+{% for user in service_users | selectattr('category', 'equalto', 'Database') %}
+- {{ user.name }} ({{ user.uid }}): {{ user.description }}
+{% endfor %}
+
+## Cross-functional Access
+{% for access_type, users in supplementary_groups.items() %}
+
+### {{ access_type | replace('_', ' ') | title }}
+{% for user in users %}
+- {{ user }}
+{% endfor %}
+{% endfor %}

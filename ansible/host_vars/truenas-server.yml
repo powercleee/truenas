@@ -1,0 +1,72 @@
+---
+# Host-specific variables for truenas-server
+
+# Network configuration
+ansible_host: 10.0.2.10  # Change to your actual TrueNAS IP
+ansible_user: root
+ansible_python_interpreter: /usr/bin/python3
+
+# ZFS pool specific to this host
+zfs_pool: tank  # Change if your pool has a different name
+
+# Host-specific storage configuration
+storage_config:
+  pool_name: "{{ zfs_pool }}"
+  # Adjust based on your actual storage setup
+  total_capacity: "47.8TB"
+  raid_level: "RAIDZ2"
+
+# Hardware-specific settings
+hardware:
+  # Adjust based on your server specs
+  memory_gb: 192
+  cpu_cores: 20
+  # Enable if you have NVMe cache devices
+  enable_l2arc: false
+  enable_zil: false
+
+# Network settings specific to this host
+network:
+  hostname: truenas-server
+  domain: home.arpa
+  # Management interface
+  mgmt_interface: "bond0"
+  mgmt_ip: "{{ ansible_host }}"
+  mgmt_netmask: "255.255.255.0"
+  mgmt_gateway: "10.0.2.1"
+
+# Service-specific overrides for this host
+service_overrides:
+  # Override snapshot method for this specific host if needed
+  # snapshot_method: truenas_api
+
+  # Host-specific retention policies
+  snapshot_retention:
+    databases: 48  # hours for critical database snapshots
+    applications: 7  # days for application data
+    media: 30  # days for media content
+
+# Security configuration for this host
+security:
+  # SSH configuration
+  ssh_port: 22
+  disable_root_ssh: false
+
+  # Firewall rules (if managing with Ansible)
+  firewall_rules: []
+    # - { port: 80, protocol: tcp, source: "192.168.1.0/24" }
+    # - { port: 443, protocol: tcp, source: "192.168.1.0/24" }
+
+# Monitoring and alerting
+monitoring:
+  # Enable system monitoring
+  enable_node_exporter: true
+  # SNMP community (if using SNMP monitoring)
+  snmp_community: "public"
+
+# Backup configuration
+backup:
+  # Enable automated config backup
+  config_backup: true
+  # Backup destination (optional)
+  # backup_destination: "/mnt/backup/truenas-config"

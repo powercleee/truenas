@@ -1,0 +1,11 @@
+---
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: restart sanoid timer
+  systemd:
+    name: sanoid.timer
+    state: restarted
+    enabled: yes
+    daemon_reload: yes

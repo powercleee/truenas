@@ -1,0 +1,30 @@
+---
+- name: Include snapshot method specific tasks
+  include_tasks: "{{ snapshot_method }}.yml"
+  tags:
+    - snapshots
+
+- name: Create snapshot management scripts
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: cleanup_snapshots.sh.j2, dest: /usr/local/bin/cleanup_snapshots.sh, mode: '0755' }
+    - { src: snapshot_report.sh.j2, dest: /usr/local/bin/snapshot_report.sh, mode: '0755' }
+  tags:
+    - snapshots
+    - scripts
+
+- name: Create log directory for snapshot operations
+  file:
+    path: "{{ sanoid_log_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags:
+    - snapshots
+    - logging

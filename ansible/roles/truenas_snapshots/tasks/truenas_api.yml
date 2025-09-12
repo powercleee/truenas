@@ -1,0 +1,34 @@
+---
+- name: Generate TrueNAS snapshot tasks configuration
+  template:
+    src: snapshot_tasks.json.j2
+    dest: /tmp/snapshot_tasks.json
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - snapshots
+    - truenas_api
+    - config
+
+- name: Display import instructions for TrueNAS Web UI
+  debug:
+    msg:
+      - "TrueNAS snapshot tasks configuration has been generated:"
+      - "File location: /tmp/snapshot_tasks.json"
+      - ""
+      - "To import these tasks:"
+      - "1. Open TrueNAS Web UI"
+      - "2. Go to Storage > Snapshots"
+      - "3. Click 'Add' to create new periodic snapshot tasks"
+      - "4. Configure each task manually using the parameters from the JSON file"
+      - ""
+      - "Alternatively, you can use the TrueNAS API to import these programmatically"
+  tags:
+    - snapshots
+    - truenas_api
+    - info
+
+# Note: Direct TrueNAS API integration would require API credentials
+# and additional modules. This provides the configuration file that can be
+# imported manually or via API calls.

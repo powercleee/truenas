@@ -1,0 +1,66 @@
+---
+- name: TrueNAS SCALE Infrastructure Setup
+  hosts: truenas
+  become: true
+  gather_facts: true
+  vars:
+    zfs_pool: "{{ hostvars[inventory_hostname]['zfs_pool'] | default('tank') }}"
+
+  pre_tasks:
+    - name: Verify ZFS pool exists
+      command: zpool status {{ zfs_pool }}
+      register: pool_status
+      failed_when: pool_status.rc != 0
+      changed_when: false
+      tags: always
+
+    - name: Display setup information
+      debug:
+        msg:
+          - "Starting TrueNAS SCALE setup for host: {{ inventory_hostname }}"
+          - "Target ZFS pool: {{ zfs_pool }}"
+          - "Total services to configure: 61"
+      tags: always
+
+  roles:
+    - role: truenas_users
+      tags:
+        - users
+        - setup
+
+    - role: truenas_datasets
+      tags:
+        - datasets
+        - zfs
+        - setup
+
+    - role: truenas_snapshots
+      tags:
+        - snapshots
+        - backup
+        - setup
+
+  post_tasks:
+    - name: Display completion summary
+      debug:
+        msg:
+          - "TrueNAS SCALE infrastructure setup completed successfully!"
+          - "Users created: {{ service_users | length }} service users across {{ service_groups | length }} groups"
+          - "Datasets created: Main datasets, application datasets for all {{ service_users | length }} services"
+          - "Snapshots configured: {{ snapshot_method | title }} snapshot management enabled"
+          - ""
+          - "Next steps:"
+          - "1. Deploy your containerized services using the created users and datasets"
+          - "2. Configure application-specific permissions as needed"
+          - "3. Monitor snapshot operations and adjust retention policies if required"
+          - "4. Review generated reference files in /root/"
+      tags: always
+
+    - name: Generate deployment summary
+      template:
+        src: deployment_summary.md.j2
+        dest: /root/truenas_deployment_summary.md
+        owner: root
+        group: root
+        mode: '0644'
+      tags: always

@@ -1,0 +1,189 @@
+---
+# Default ZFS pool name
+zfs_pool: tank
+
+# Snapshot configuration method - choose between 'truenas_api', 'sanoid', or 'zfs_auto_snapshot'
+snapshot_method: sanoid
+
+# TrueNAS SCALE Snapshot Tasks Configuration
+truenas_snapshot_tasks:
+  - name: "Critical-Databases"
+    dataset: "{{ zfs_pool }}/databases"
+    recursive: true
+    schedule:
+      minute: "*/15"
+      hour: "*"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 24
+    lifetime_unit: "HOUR"
+    naming_schema: "critical-%Y%m%d-%H%M"
+    allow_empty: false
+    enabled: true
+
+  - name: "Important-Apps"
+    dataset: "{{ zfs_pool }}/apps"
+    recursive: false
+    exclude:
+      - "{{ zfs_pool }}/apps/plex/transcode"
+      - "{{ zfs_pool }}/apps/*/cache"
+    schedule:
+      minute: "0"
+      hour: "*/4"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 7
+    lifetime_unit: "DAY"
+    naming_schema: "apps-%Y%m%d-%H%M"
+    allow_empty: false
+    enabled: true
+
+  - name: "Media-Weekly"
+    dataset: "{{ zfs_pool }}/media"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "3"
+      dom: "*"
+      month: "*"
+      dow: "0"
+    lifetime_value: 4
+    lifetime_unit: "WEEK"
+    naming_schema: "media-%Y%m%d"
+    allow_empty: true
+    enabled: true
+
+  - name: "Logs-Daily"
+    dataset: "{{ zfs_pool }}/logs"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "2"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 7
+    lifetime_unit: "DAY"
+    naming_schema: "logs-%Y%m%d"
+    allow_empty: true
+    enabled: true
+
+  - name: "System-Config"
+    dataset: "{{ zfs_pool }}/system"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "1"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 30
+    lifetime_unit: "DAY"
+    naming_schema: "system-%Y%m%d"
+    allow_empty: false
+    enabled: true
+
+# Sanoid configuration for advanced snapshot management
+sanoid_datasets:
+  # Critical databases - frequent snapshots
+  "{{ zfs_pool }}/databases":
+    use_template: "critical"
+    recursive: true
+    process_children_only: false
+
+  # Important applications - regular snapshots
+  "{{ zfs_pool }}/apps":
+    use_template: "apps"
+    recursive: true
+    process_children_only: false
+
+  # Media content - less frequent snapshots
+  "{{ zfs_pool }}/media":
+    use_template: "media"
+    recursive: true
+    process_children_only: false
+
+  # Logs - daily snapshots
+  "{{ zfs_pool }}/logs":
+    use_template: "logs"
+    recursive: true
+    process_children_only: false
+
+  # System configuration - important but not as frequent
+  "{{ zfs_pool }}/system":
+    use_template: "system"
+    recursive: true
+    process_children_only: false
+
+  # Downloads - minimal retention
+  "{{ zfs_pool }}/downloads":
+    use_template: "downloads"
+    recursive: true
+    process_children_only: false
+
+# Sanoid templates
+sanoid_templates:
+  critical:
+    frequently: 4
+    hourly: 24
+    daily: 30
+    monthly: 3
+    yearly: 0
+    autosnap: true
+    autoprune: true
+
+  apps:
+    frequently: 0
+    hourly: 6
+    daily: 7
+    monthly: 1
+    yearly: 0
+    autosnap: true
+    autoprune: true
+
+  media:
+    frequently: 0
+    hourly: 0
+    daily: 3
+    weekly: 4
+    monthly: 2
+    yearly: 0
+    autosnap: true
+    autoprune: true
+
+  logs:
+    frequently: 0
+    hourly: 0
+    daily: 7
+    weekly: 0
+    monthly: 0
+    yearly: 0
+    autosnap: true
+    autoprune: true
+
+  system:
+    frequently: 0
+    hourly: 0
+    daily: 30
+    weekly: 4
+    monthly: 6
+    yearly: 1
+    autosnap: true
+    autoprune: true
+
+  downloads:
+    frequently: 0
+    hourly: 0
+    daily: 3
+    weekly: 0
+    monthly: 0
+    yearly: 0
+    autosnap: true
+    autoprune: true
+
+# Sanoid configuration
+sanoid_cron_minute: "*/15"
+sanoid_log_level: "info"
+sanoid_log_dir: "/var/log/sanoid"

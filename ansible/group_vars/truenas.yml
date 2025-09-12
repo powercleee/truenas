@@ -1,0 +1,58 @@
+---
+# TrueNAS-specific variables
+
+# TrueNAS version compatibility
+truenas_min_version: "25.10"
+
+# ZFS specific settings for TrueNAS
+zfs_settings:
+  # Optimize for SSD storage
+  enable_zfs_trim: true
+  # Enable compression by default
+  default_compression: lz4
+  # Optimize record sizes for different workloads
+  record_sizes:
+    database: "16K"
+    application: "128K"
+    media: "1M"
+    container: "64K"
+
+# TrueNAS service integration
+truenas_services:
+  # Enable TrueNAS built-in services
+  smart_monitoring: true
+  ups_monitoring: false
+
+  # Configure TrueNAS middleware
+  middleware_timeout: 300
+
+  # Email notifications
+  email_notifications: false
+  smtp_server: ""
+
+# TrueNAS API configuration (if using API-based snapshot management)
+truenas_api:
+  # Set these in host_vars or vault for security
+  host: "{{ ansible_host }}"
+  port: 443
+  protocol: https
+  # api_key: "{{ truenas_api_key }}"  # Define in vault
+  # root_password: "{{ truenas_root_password }}"  # Define in vault or use key auth
+
+# TrueNAS apps and containers
+truenas_apps:
+  # Use TrueNAS SCALE apps system
+  enable_kubernetes: false
+  # Apps pool (usually same as main pool)
+  apps_pool: "{{ zfs_pool }}"
+
+# Resource limits for containers/services
+resource_limits:
+  # Default container resource limits
+  default_memory_limit: "512M"
+  default_cpu_limit: "0.5"
+
+  # Service-specific limits
+  database_memory_limit: "2G"
+  media_memory_limit: "4G"
+  monitoring_memory_limit: "1G"
