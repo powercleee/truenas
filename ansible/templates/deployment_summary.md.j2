@@ -1,0 +1,177 @@
+# TrueNAS SCALE Deployment Summary
+
+**Deployment Date:** {{ ansible_date_time.iso8601 }}
+**Target Host:** {{ inventory_hostname }} ({{ ansible_host }})
+**ZFS Pool:** {{ zfs_pool }}
+**Ansible User:** {{ ansible_user }}
+
+## Infrastructure Overview
+
+This deployment configured a complete TrueNAS SCALE infrastructure with 61 services across 11 categories, optimized for self-hosted applications and robust data management.
+
+### Service Groups Created
+
+| Group | GID | Users | Description |
+|-------|-----|-------|-------------|
+{% for group in service_groups %}
+| {{ group.name }} | {{ group.gid }} | {{ service_users | selectattr('group', 'equalto', group.name) | list | length }} | {{ group.description }} |
+{% endfor %}
+
+### Dataset Structure
+
+The following ZFS datasets were created with optimized record sizes:
+
+#### Main Datasets
+- `{{ zfs_pool }}/apps` - Application data (128K recordsize)
+- `{{ zfs_pool }}/databases` - Database storage (16K recordsize)
+- `{{ zfs_pool }}/media` - Media files (1M recordsize, compression off)
+- `{{ zfs_pool }}/containers` - Container runtime data (64K-128K recordsize)
+- `{{ zfs_pool }}/downloads` - Download staging (128K recordsize)
+- `{{ zfs_pool }}/backups` - Backup storage (1M recordsize)
+- `{{ zfs_pool }}/logs` - Application logs (128K recordsize)
+- `{{ zfs_pool }}/system` - System configuration (128K recordsize)
+
+#### Service-Specific Datasets
+
+**Media Services ({{ service_users | selectattr('category', 'equalto', 'Media') | list | length }} services):**
+{% for user in service_users | selectattr('category', 'equalto', 'Media') %}
+- `{{ zfs_pool }}/apps/{{ user.name }}` - {{ user.description }}
+{% endfor %}
+
+**Database Services ({{ service_users | selectattr('category', 'equalto', 'Database') | list | length }} services):**
+{% for user in service_users | selectattr('category', 'equalto', 'Database') %}
+- `{{ zfs_pool }}/databases/{{ user.name }}` - {{ user.description }}
+{% endfor %}
+
+**Security Services ({{ service_users | selectattr('category', 'equalto', 'Security') | list | length }} services):**
+{% for user in service_users | selectattr('category', 'equalto', 'Security') %}
+- `{{ zfs_pool }}/apps/{{ user.name }}` - {{ user.description }}
+{% endfor %}
+
+**Monitoring Services ({{ service_users | selectattr('category', 'equalto', 'Monitoring') | list | length }} services):**
+{% for user in service_users | selectattr('category', 'equalto', 'Monitoring') %}
+- `{{ zfs_pool }}/apps/{{ user.name }}` - {{ user.description }}
+{% endfor %}
+
+*[Additional categories truncated for brevity - see full user/group reference file]*
+
+### Snapshot Configuration
+
+**Method:** {{ snapshot_method | title }}
+
+{% if snapshot_method == 'sanoid' %}
+**Sanoid Templates Applied:**
+{% for template_name, template_config in sanoid_templates.items() %}
+- **{{ template_name }}**: {{ template_config.daily }} daily, {{ template_config.monthly }} monthly snapshots
+{% endfor %}
+
+**Dataset Snapshot Policies:**
+{% for dataset, config in sanoid_datasets.items() %}
+- `{{ dataset }}` → {{ config.use_template }} template
+{% endfor %}
+{% endif %}
+
+### File Locations
+
+- **User/Group Reference:** `/root/users_groups_reference.txt`
+- **Deployment Summary:** `/root/truenas_deployment_summary.md` (this file)
+{% if snapshot_method == 'sanoid' %}
+- **Sanoid Config:** `/etc/sanoid/sanoid.conf`
+- **Sanoid Logs:** `{{ sanoid_log_dir }}/`
+- **Cleanup Script:** `/usr/local/bin/cleanup_snapshots.sh`
+- **Report Script:** `/usr/local/bin/snapshot_report.sh`
+{% elif snapshot_method == 'truenas_api' %}
+- **Snapshot Tasks JSON:** `/tmp/snapshot_tasks.json`
+{% endif %}
+
+## Usage Examples
+
+### Docker Compose Integration
+
+```yaml
+version: '3.8'
+services:
+  plex:
+    image: plexinc/pms-docker
+    user: "{{ service_users | selectattr('name', 'equalto', 'plex') | map(attribute='uid') | first }}:{{ service_groups | selectattr('name', 'equalto', 'media') | map(attribute='gid') | first }}"
+    volumes:
+      - /mnt/{{ zfs_pool }}/apps/plex:/config
+      - /mnt/{{ zfs_pool }}/media:/data:ro
+      - /mnt/{{ zfs_pool }}/logs/plex:/logs
+```
+
+### Kubernetes Pod Security Context
+
+```yaml
+apiVersion: v1
+kind: Pod
+spec:
+  securityContext:
+    runAsUser: {{ service_users | selectattr('name', 'equalto', 'grafana') | map(attribute='uid') | first }}
+    runAsGroup: {{ service_groups | selectattr('name', 'equalto', 'monitor') | map(attribute='gid') | first }}
+    fsGroup: {{ service_groups | selectattr('name', 'equalto', 'monitor') | map(attribute='gid') | first }}
+  containers:
+  - name: grafana
+    volumeMounts:
+    - name: data
+      mountPath: /var/lib/grafana
+  volumes:
+  - name: data
+    hostPath:
+      path: /mnt/{{ zfs_pool }}/apps/grafana
+```
+
+## Maintenance Commands
+
+### Snapshot Operations
+```bash
+# View snapshot report
+/usr/local/bin/snapshot_report.sh
+
+{% if snapshot_method == 'sanoid' %}
+# Manual snapshot creation
+sanoid --take-snapshots
+
+# Manual cleanup
+/usr/local/bin/cleanup_snapshots.sh
+{% endif %}
+
+# List all snapshots
+zfs list -t snapshot | head -20
+```
+
+### User/Group Verification
+```bash
+# List all service users
+getent passwd | grep -E "(300[0-9]|[4-6][0-9]{3}|27017|9200|8086)"
+
+# Check user group memberships
+id plex
+id grafana
+```
+
+### ZFS Management
+```bash
+# Check dataset properties
+zfs get recordsize,compression {{ zfs_pool }}/apps
+zfs get recordsize,compression {{ zfs_pool }}/databases
+
+# Monitor pool status
+zpool status {{ zfs_pool }}
+zfs list -o space {{ zfs_pool }}
+```
+
+## Next Steps
+
+1. **Deploy Applications:** Use the created users/groups and datasets with your container orchestration platform
+2. **Configure Permissions:** Fine-tune directory permissions for specific applications as needed
+3. **Monitor Snapshots:** Review snapshot creation and adjust retention policies based on storage capacity
+4. **Security Hardening:** Configure firewalls, SSL certificates, and authentication systems
+5. **Backup Strategy:** Set up off-site backups for critical data using the backup datasets
+
+## Support Files Generated
+
+All reference files and configurations have been generated in `/root/` for future reference and troubleshooting.
+
+---
+*Generated by Ansible TrueNAS SCALE Infrastructure Deployment*

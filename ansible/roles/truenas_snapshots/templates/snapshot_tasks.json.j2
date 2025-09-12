@@ -1,0 +1,26 @@
+{
+  "snapshot_tasks": [
+{% for task in truenas_snapshot_tasks %}
+    {
+      "name": "{{ task.name }}",
+      "dataset": "{{ task.dataset }}",
+      "recursive": {{ task.recursive | lower }},
+{% if task.exclude is defined %}
+      "exclude": {{ task.exclude | to_json }},
+{% endif %}
+      "schedule": {
+        "minute": "{{ task.schedule.minute }}",
+        "hour": "{{ task.schedule.hour }}",
+        "dom": "{{ task.schedule.dom }}",
+        "month": "{{ task.schedule.month }}",
+        "dow": "{{ task.schedule.dow }}"
+      },
+      "lifetime_value": {{ task.lifetime_value }},
+      "lifetime_unit": "{{ task.lifetime_unit }}",
+      "naming_schema": "{{ task.naming_schema }}",
+      "allow_empty": {{ task.allow_empty | lower }},
+      "enabled": {{ task.enabled | lower }}
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ]
+}

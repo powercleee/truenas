@@ -1,0 +1,46 @@
+---
+# Global variables for TrueNAS SCALE deployment
+
+# Default ZFS pool name - can be overridden per host
+zfs_pool: tank
+
+# Snapshot configuration method
+# Options: 'sanoid', 'truenas_api', 'zfs_auto_snapshot'
+snapshot_method: sanoid
+
+# Global ZFS properties
+zfs_properties:
+  compression: lz4
+  atime: off
+  xattr: sa
+
+# Timezone for snapshot scheduling
+timezone: "America/New_York"
+
+# Logging configuration
+log_retention_days: 30
+log_max_size: "100M"
+
+# Security settings
+disable_root_password: false
+ssh_hardening: true
+
+# Container runtime preferences
+preferred_container_runtime: docker
+enable_podman: false
+
+# Backup retention policies (in days unless specified)
+retention_policies:
+  critical: 30
+  important: 14
+  standard: 7
+  temporary: 3
+
+# Network configuration
+dns_servers:
+  - 10.0.2.1
+
+ntp_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  - 2.pool.ntp.org
