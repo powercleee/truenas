@@ -53,7 +53,7 @@ ssh truenas_admin@your-truenas-ip
 # Type 'exit' to disconnect
 ```
 
-## That's It! 
+## That's It!
 
 No additional software installation is required on TrueNAS SCALE. The system comes with:
 - ✅ Python 3 (required for Ansible)

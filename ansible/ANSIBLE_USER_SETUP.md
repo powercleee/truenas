@@ -225,7 +225,7 @@ cat > bootstrap-ansible-user.yml << 'EOF'
     ansible_user_uid: 1500
     ansible_user_gid: 1500
     ansible_public_key: "{{ lookup('file', '~/.ssh/truenas-ansible.pub') }}"
-  
+
   tasks:
     - name: Create ansible group
       group:
@@ -370,11 +370,11 @@ ansible-playbook test-connection.yml
 
 ### Advantages of Dedicated Ansible User
 
-✅ **Principle of Least Privilege**: Purpose-built account with only necessary permissions  
-✅ **Audit Trail**: Clear separation of automated vs manual administrative actions  
-✅ **Account Isolation**: No impact on other administrative accounts  
-✅ **SSH Key Only**: No password authentication risk  
-✅ **Centralized Management**: Easy to disable/rotate without affecting other services  
+✅ **Principle of Least Privilege**: Purpose-built account with only necessary permissions
+✅ **Audit Trail**: Clear separation of automated vs manual administrative actions
+✅ **Account Isolation**: No impact on other administrative accounts
+✅ **SSH Key Only**: No password authentication risk
+✅ **Centralized Management**: Easy to disable/rotate without affecting other services
 
 ### Optional: Restrict Sudo Commands
 
@@ -455,7 +455,7 @@ ansible-inventory --list
 ### Regular Tasks
 
 1. **Monitor SSH logs**: Review `/var/log/auth.log` for ansible user activity
-2. **Rotate SSH keys**: Update keys quarterly or after security incidents  
+2. **Rotate SSH keys**: Update keys quarterly or after security incidents
 3. **Review sudo logs**: Check `/var/log/sudo.log` for privilege escalation
 4. **Update sudoers**: Adjust permissions as automation requirements change
 

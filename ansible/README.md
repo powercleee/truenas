@@ -18,12 +18,18 @@ This Ansible implementation replaces the original bash scripts with a more maint
 
 ### Prerequisites
 
-- Ansible 2.9+ installed on control machine
-- Python 3.6+ on target TrueNAS system
-- Dedicated `ansible` user with SSH key authentication (see setup guide below)
-- ZFS pool named `tank` (or customize in inventory)
+- **Control Machine**: Ansible 2.9+ installed (see [CONTROL_MACHINE_SETUP.md](CONTROL_MACHINE_SETUP.md))
+- **TrueNAS System**: Python 3.6+ (included by default)
+- **Dedicated User**: `ansible` user with SSH key authentication
+- **Storage**: ZFS pool named `tank` (or customize in inventory)
 
-**⚠️ Important:** This project uses a dedicated `ansible` user (UID: 1500) instead of root or truenas_admin for security. See [ANSIBLE_USER_SETUP.md](ANSIBLE_USER_SETUP.md) for complete configuration instructions.
+**⚠️ Important:** This project uses a dedicated `ansible` user (UID: 1500) instead of root or truenas_admin for security. See setup guides below for complete instructions.
+
+### Setup Guides
+
+📋 **[CONTROL_MACHINE_SETUP.md](CONTROL_MACHINE_SETUP.md)** - Install Ansible on your laptop/server  
+📋 **[PRE_BOOTSTRAP_CHECKLIST.md](PRE_BOOTSTRAP_CHECKLIST.md)** - Prepare TrueNAS for automation  
+📋 **[ANSIBLE_USER_SETUP.md](ANSIBLE_USER_SETUP.md)** - Detailed ansible user configuration  
 
 ### Installation
 
