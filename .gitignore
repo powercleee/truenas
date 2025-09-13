@@ -57,9 +57,16 @@ credentials.yaml
 # Ansible Runtime Files
 *.retry
 ansible/.vault_pass
-ansible/logs/
-ansible/cache/
+ansible/logs/*.log
+ansible/logs/*.retry
+ansible/cache/facts/*
+ansible/cache/inventory/*
 *.log
+
+# Keep directory structure
+!ansible/logs/.gitkeep
+!ansible/cache/facts/.gitkeep
+!ansible/cache/inventory/.gitkeep
 
 # Ansible Galaxy
 ansible/roles/external/
