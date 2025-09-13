@@ -20,8 +20,10 @@ This Ansible implementation replaces the original bash scripts with a more maint
 
 - Ansible 2.9+ installed on control machine
 - Python 3.6+ on target TrueNAS system
-- SSH key-based authentication to TrueNAS root account
+- Dedicated `ansible` user with SSH key authentication (see setup guide below)
 - ZFS pool named `tank` (or customize in inventory)
+
+**⚠️ Important:** This project uses a dedicated `ansible` user (UID: 1500) instead of root or truenas_admin for security. See [ANSIBLE_USER_SETUP.md](ANSIBLE_USER_SETUP.md) for complete configuration instructions.
 
 ### Installation
 
@@ -34,16 +36,36 @@ This Ansible implementation replaces the original bash scripts with a more maint
    ansible-galaxy install -r requirements.yml
    ```
 
-2. **Configure Inventory**
+2. **Create Ansible User** (One-time setup)
+   ```bash
+   # Generate SSH key pair
+   ssh-keygen -t ed25519 -f ~/.ssh/truenas-ansible
+
+   # Update bootstrap inventory with your TrueNAS IP
+   nano bootstrap-inventory.yml
+
+   # Create the dedicated ansible user
+   ansible-playbook -i bootstrap-inventory.yml bootstrap-ansible-user.yml
+   ```
+
+3. **Configure Main Inventory**
    ```bash
    # Edit the inventory file with your TrueNAS IP
    nano inventories/hosts.yml
 
-   # Update host-specific variables
+   # Update host-specific variables if needed
    nano host_vars/truenas-server.yml
    ```
 
-3. **Run the Playbook**
+4. **Test Connection**
+   ```bash
+   # Test TrueNAS connectivity and permissions
+   ansible-playbook test-connection.yml
+   
+   # Should show all green checkmarks ✅
+   ```
+
+5. **Run the Playbook**
    ```bash
    # Full infrastructure setup
    ansible-playbook site.yml
@@ -127,9 +149,11 @@ Update `inventories/hosts.yml`:
 all:
   hosts:
     truenas-server:
-      ansible_host: 192.168.1.100  # Your TrueNAS IP
-      ansible_user: root
-      zfs_pool: tank               # Your ZFS pool name
+      ansible_host: 192.168.1.100        # Your TrueNAS IP
+      ansible_user: ansible               # Dedicated ansible user (UID: 1500)
+      ansible_become: true                # Enable sudo
+      ansible_ssh_private_key_file: ~/.ssh/truenas-ansible
+      zfs_pool: tank                      # Your ZFS pool name
 ```
 
 ### Snapshot Methods

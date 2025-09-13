@@ -1,0 +1,159 @@
+---
+- name: Bootstrap Dedicated Ansible User on TrueNAS SCALE
+  hosts: all
+  remote_user: truenas_admin
+  become: true
+  gather_facts: false
+  vars:
+    ansible_user_uid: 1500
+    ansible_user_gid: 1500
+    ansible_user_name: ansible
+    ansible_group_name: ansible
+    ansible_public_key: "{{ lookup('file', '~/.ssh/truenas-ansible.pub') }}"
+
+  pre_tasks:
+    - name: Verify we're running as truenas_admin
+      debug:
+        msg: "Bootstrapping ansible user via truenas_admin account"
+
+    - name: Check if ansible user already exists
+      command: id {{ ansible_user_name }}
+      register: user_check
+      failed_when: false
+      changed_when: false
+
+    - name: Exit if ansible user already exists
+      fail:
+        msg: "Ansible user already exists. Use standard playbooks instead."
+      when: user_check.rc == 0
+
+  tasks:
+    - name: Create ansible group
+      group:
+        name: "{{ ansible_group_name }}"
+        gid: "{{ ansible_user_gid }}"
+        state: present
+
+    - name: Create ansible user
+      user:
+        name: "{{ ansible_user_name }}"
+        uid: "{{ ansible_user_uid }}"
+        group: "{{ ansible_group_name }}"
+        shell: /bin/bash
+        home: "/home/{{ ansible_user_name }}"
+        comment: "Ansible Automation User"
+        create_home: true
+        state: present
+
+    - name: Set up SSH directory
+      file:
+        path: "/home/{{ ansible_user_name }}/.ssh"
+        state: directory
+        owner: "{{ ansible_user_name }}"
+        group: "{{ ansible_group_name }}"
+        mode: '0700'
+
+    - name: Install SSH public key
+      authorized_key:
+        user: "{{ ansible_user_name }}"
+        key: "{{ ansible_public_key }}"
+        state: present
+        comment: "Ansible automation key"
+
+    - name: Configure sudo access for ansible user
+      copy:
+        content: |
+          # Ansible user sudo configuration
+          # Allow ansible user to run all commands without password
+          {{ ansible_user_name }} ALL=(ALL) NOPASSWD: ALL
+
+          # Optional restricted version (uncomment to use):
+          # {{ ansible_user_name }} ALL=(ALL) NOPASSWD: /sbin/zfs, /sbin/zpool, /usr/sbin/useradd, /usr/sbin/usermod, /usr/sbin/groupadd, /bin/mkdir, /bin/chown, /bin/chmod, /bin/systemctl, /usr/bin/apt, /usr/bin/git, /bin/cp, /bin/mv, /bin/rm, /bin/ln, /usr/bin/tee, /bin/cat, /usr/bin/find, /usr/bin/tar, /usr/bin/rsync
+        dest: "/etc/sudoers.d/{{ ansible_user_name }}"
+        mode: '0440'
+        owner: root
+        group: root
+        validate: '/usr/sbin/visudo -cf %s'
+
+    - name: Test ansible user sudo access
+      command: "sudo -u {{ ansible_user_name }} sudo whoami"
+      register: sudo_test
+      changed_when: false
+
+    - name: Test SSH key authentication
+      command: "sudo -u {{ ansible_user_name }} ssh-keygen -l -f /home/{{ ansible_user_name }}/.ssh/authorized_keys"
+      register: ssh_key_test
+      changed_when: false
+
+    - name: Create ansible user information file
+      copy:
+        content: |
+          # Ansible User Configuration Summary
+          # Generated: {{ ansible_date_time.iso8601 }}
+
+          User: {{ ansible_user_name }}
+          UID: {{ ansible_user_uid }}
+          Group: {{ ansible_group_name }}
+          GID: {{ ansible_user_gid }}
+          Home: /home/{{ ansible_user_name }}
+          Shell: /bin/bash
+
+          SSH Key Fingerprint: {{ ssh_key_test.stdout }}
+          Sudo Access: {{ sudo_test.stdout }}
+
+          ## SSH Connection Test
+          ssh -i ~/.ssh/truenas-ansible {{ ansible_user_name }}@{{ ansible_host }}
+
+          ## Ansible Connection Test
+          ansible all -m ping -u {{ ansible_user_name }}
+
+          ## Security Notes
+          - Password authentication: DISABLED
+          - SSH key authentication: ENABLED
+          - Sudo without password: ENABLED
+          - Purpose: Ansible automation only
+        dest: "/home/{{ ansible_user_name }}/ansible-user-info.txt"
+        owner: "{{ ansible_user_name }}"
+        group: "{{ ansible_group_name }}"
+        mode: '0644'
+
+  post_tasks:
+    - name: Display bootstrap results
+      debug:
+        msg:
+          - "✅ Bootstrap completed successfully!"
+          - ""
+          - "👤 User: {{ ansible_user_name }} (UID: {{ ansible_user_uid }})"
+          - "👥 Group: {{ ansible_group_name }} (GID: {{ ansible_user_gid }})"
+          - "🏠 Home: /home/{{ ansible_user_name }}"
+          - "🔑 SSH Key: Configured"
+          - "🛡️  Sudo: {{ sudo_test.stdout }}"
+          - ""
+          - "🧪 Test connection:"
+          - "   ssh -i ~/.ssh/truenas-ansible {{ ansible_user_name }}@{{ ansible_host }}"
+          - ""
+          - "🚀 Next steps:"
+          - "   1. Test SSH connection manually"
+          - "   2. Run: ansible-playbook test-connection.yml"
+          - "   3. Deploy infrastructure: ansible-playbook site.yml"
+          - ""
+          - "📄 User info saved to: /home/{{ ansible_user_name }}/ansible-user-info.txt"
+
+    - name: Save bootstrap completion marker
+      copy:
+        content: |
+          # Ansible User Bootstrap Completion
+          # Date: {{ ansible_date_time.iso8601 }}
+          # User: {{ ansible_user_name }} ({{ ansible_user_uid }}:{{ ansible_user_gid }})
+          # SSH Key: {{ ssh_key_test.stdout }}
+          # Sudo Test: {{ sudo_test.stdout }}
+        dest: "/root/.ansible-user-bootstrap-complete"
+        mode: '0600'
+
+    - name: Important security reminder
+      debug:
+        msg:
+          - "⚠️  SECURITY REMINDER:"
+          - "   After testing, disable password authentication in SSH"
+          - "   TrueNAS Web UI: System Settings → Services → SSH → Configure"
+          - "   Set 'Allow Password Authentication' to DISABLED"

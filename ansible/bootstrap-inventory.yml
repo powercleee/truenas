@@ -1,0 +1,14 @@
+# Bootstrap Inventory for Creating Ansible User
+# This is used ONLY for the initial ansible user creation
+# After bootstrap, use the main inventories/hosts.yml
+
+all:
+  hosts:
+    truenas-server:
+      ansible_host: 10.0.2.10  # Change to your TrueNAS IP
+      ansible_user: truenas_admin  # Using default admin for bootstrap only
+      ansible_become: true
+      ansible_become_method: sudo
+      ansible_become_user: root
+      # Note: You may need to use password authentication initially
+      # or set up SSH keys for truenas_admin first

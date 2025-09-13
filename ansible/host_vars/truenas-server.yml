@@ -3,8 +3,12 @@
 
 # Network configuration
 ansible_host: 10.0.2.10  # Change to your actual TrueNAS IP
-ansible_user: root
+ansible_user: ansible  # Dedicated ansible user (UID: 1500)
 ansible_python_interpreter: /usr/bin/python3
+ansible_become: true
+ansible_become_method: sudo
+ansible_become_user: root
+ansible_ssh_private_key_file: ~/.ssh/truenas-ansible
 
 # ZFS pool specific to this host
 zfs_pool: tank  # Change if your pool has a different name
