@@ -21,8 +21,8 @@ ssh-keygen -t ed25519 -f ~/.ssh/truenas-ansible
 # 2. Update bootstrap inventory with your TrueNAS IP
 nano bootstrap-inventory.yml
 
-# 3. Run bootstrap playbook
-ansible-playbook -i bootstrap-inventory.yml bootstrap-ansible-user.yml
+# 3. Run bootstrap playbook (will prompt for truenas_admin password)
+ansible-playbook -i bootstrap-inventory.yml bootstrap-ansible-user.yml --ask-pass
 
 # 4. Test connection
 ssh -i ~/.ssh/truenas-ansible ansible@your-truenas-ip

@@ -36,7 +36,13 @@ This Ansible implementation replaces the original bash scripts with a more maint
    ansible-galaxy install -r requirements.yml
    ```
 
-2. **Create Ansible User** (One-time setup)
+2. **Prepare TrueNAS** (One-time setup)
+   ```bash
+   # See PRE_BOOTSTRAP_CHECKLIST.md for TrueNAS configuration
+   # Mainly: Enable SSH service and set truenas_admin password
+   ```
+
+3. **Create Ansible User** (One-time setup)
    ```bash
    # Generate SSH key pair
    ssh-keygen -t ed25519 -f ~/.ssh/truenas-ansible
@@ -44,11 +50,11 @@ This Ansible implementation replaces the original bash scripts with a more maint
    # Update bootstrap inventory with your TrueNAS IP
    nano bootstrap-inventory.yml
 
-   # Create the dedicated ansible user
-   ansible-playbook -i bootstrap-inventory.yml bootstrap-ansible-user.yml
+   # Create the dedicated ansible user (will prompt for truenas_admin password)
+   ansible-playbook -i bootstrap-inventory.yml bootstrap-ansible-user.yml --ask-pass
    ```
 
-3. **Configure Main Inventory**
+4. **Configure Main Inventory**
    ```bash
    # Edit the inventory file with your TrueNAS IP
    nano inventories/hosts.yml
@@ -57,7 +63,7 @@ This Ansible implementation replaces the original bash scripts with a more maint
    nano host_vars/truenas-server.yml
    ```
 
-4. **Test Connection**
+5. **Test Connection**
    ```bash
    # Test TrueNAS connectivity and permissions
    ansible-playbook test-connection.yml
@@ -65,7 +71,7 @@ This Ansible implementation replaces the original bash scripts with a more maint
    # Should show all green checkmarks ✅
    ```
 
-5. **Run the Playbook**
+6. **Run the Playbook**
    ```bash
    # Full infrastructure setup
    ansible-playbook site.yml

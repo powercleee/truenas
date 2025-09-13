@@ -1,0 +1,315 @@
+# TrueNAS Infrastructure Repository .gitignore
+
+# ================================
+# SECURITY - NEVER COMMIT THESE!
+# ================================
+
+# SSH Keys and Certificates
+*.pem
+*.key
+*.pub
+*_rsa*
+*_ed25519*
+*_ecdsa*
+id_rsa*
+id_ed25519*
+id_ecdsa*
+ssh_host_*
+truenas-ansible*
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Passwords and Secrets
+*.vault
+*password*
+*secret*
+*token*
+.env
+.env.*
+secrets/
+vault/
+.vault_pass*
+
+# Configuration with Sensitive Data
+*production*
+*staging*
+*config.yml
+*config.yaml
+ansible/inventories/production*
+ansible/inventories/staging*
+ansible/group_vars/production*
+ansible/group_vars/staging*
+ansible/host_vars/production*
+ansible/host_vars/staging*
+
+# API Keys and Authentication
+api_key*
+auth_token*
+credentials.yml
+credentials.yaml
+
+# ================================
+# ANSIBLE SPECIFIC
+# ================================
+
+# Ansible Runtime Files
+*.retry
+ansible/.vault_pass
+ansible/logs/
+ansible/cache/
+*.log
+
+# Ansible Galaxy
+ansible/roles/external/
+ansible/collections/ansible_collections/
+
+# Ansible Facts Cache
+fact_cache/
+facts/
+*.facts
+
+# Ansible Temporary Files
+.ansible/
+ansible/.ansible/
+*.tmp
+
+# ================================
+# DEVELOPMENT & IDE
+# ================================
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+*.sublime-*
+
+# VS Code Specific
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+.netrwhist
+tags
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ================================
+# OPERATING SYSTEM
+# ================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.VolumeIcon.icns
+.TemporaryItems
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ================================
+# BACKUP & TEMPORARY FILES
+# ================================
+
+# Backup Files
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*.tmp
+*_backup
+*_bak
+
+# Archive Files (unless specifically needed)
+*.tar.gz
+*.tgz
+*.zip
+*.rar
+*.7z
+
+# Log Files
+*.log
+logs/
+log/
+
+# ================================
+# TRUENAS SPECIFIC
+# ================================
+
+# TrueNAS Configuration Exports
+truenas_config_*.db
+truenas_config_*.tar
+system_config_*.tar.gz
+
+# ZFS Snapshots Lists
+snapshot_list_*.txt
+zfs_list_*.txt
+
+# Generated Documentation
+deployment_summary_*.md
+users_groups_reference_*.txt
+docker_users_*.env
+
+# TrueNAS Bootstrap Markers
+.ansible-user-bootstrap-complete
+.truenas-setup-complete
+
+# ================================
+# DOCUMENTATION BUILD
+# ================================
+
+# Generated Documentation
+docs/_build/
+docs/build/
+*.pdf
+*.epub
+*.mobi
+
+# Jupyter Notebooks (if any)
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# ================================
+# TESTING & CI/CD
+# ================================
+
+# Test Results
+test-results/
+coverage/
+.coverage
+.pytest_cache/
+.tox/
+
+# CI/CD
+.github/workflows/test-*
+.gitlab-ci-test.yml
+
+# ================================
+# PACKAGE MANAGERS
+# ================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ================================
+# CUSTOM EXCEPTIONS
+# ================================
+
+# Keep example files but not real configs
+!ansible/inventories/hosts.yml.example
+!ansible/bootstrap-inventory.yml.example
+!*.example
+!*_template*
+!*_sample*
+
+# Keep documentation
+!README.md
+!LICENSE
+!CHANGELOG.md
+!docs/
+!*.md
+
+# Keep specific configuration templates
+!ansible/group_vars/all.yml
+!ansible/group_vars/truenas.yml
+!ansible/host_vars/truenas-server.yml
+
+# ================================
+# PROJECT SPECIFIC IGNORES
+# ================================
+
+# Custom local development
+local/
+private/
+personal/
+
+# Experimental or WIP directories
+experimental/
+wip/
+draft/
+scratch/
+
+# Local customizations
+local_vars.yml
+my_*.yml
+custom_*.yml
+
+# Output directories
+output/
+exports/
+generated/
