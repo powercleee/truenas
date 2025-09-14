@@ -1,0 +1,15 @@
+# Bootstrap API Inventory for Creating Ansible User via TrueNAS API
+# This approach uses TrueNAS middleware API instead of SSH
+
+all:
+  hosts:
+    truenas-bootstrap:  # Dummy host for API calls
+      ansible_host: 10.0.2.10  # Change to your TrueNAS IP
+      ansible_connection: local  # All API calls run locally
+      # No SSH needed - all operations via HTTPS API
+
+  vars:
+    # TrueNAS API Configuration
+    # Set truenas_api_key via command line: -e truenas_api_key=your_key_here
+    # Or create in group_vars/all.yml (encrypted with ansible-vault)
+    truenas_api_url: "https://{{ ansible_host }}/api/v2.0"
