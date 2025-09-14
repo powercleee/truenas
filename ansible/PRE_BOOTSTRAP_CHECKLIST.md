@@ -13,7 +13,6 @@ Before running the `bootstrap-ansible-user.yml` playbook, you need to prepare yo
 4. Click the **Configure** (pencil) icon for SSH
 5. Configure these settings:
    - ✅ **TCP Port**: 22 (default)
-   - ❌ **Log in as Root with Password**: DISABLED (keep disabled)
    - ✅ **Allow Password Authentication**: ENABLED (temporarily - will disable later)
    - ❌ **Allow Kerberos Authentication**: DISABLED
 6. Click **Save**
@@ -102,7 +101,7 @@ ssh truenas_admin@your-truenas-ip
 ping your-truenas-ip
 # ping: cannot resolve your-truenas-ip: Unknown host
 ```
-**Solution:** 
+**Solution:**
 - Verify TrueNAS IP address in Web UI: **Network** → **Interfaces**
 - Update your DNS or use IP address directly
 - Check network connectivity between Ansible host and TrueNAS

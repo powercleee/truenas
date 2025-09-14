@@ -178,12 +178,12 @@ ssh -v truenas_admin@your-truenas-ip
 
 ```bash
 # Use SSH agent for key management
-ssh-agent bash
+ssh-agent zsh
 ssh-add ~/.ssh/truenas-ansible
 
 # Configure SSH client
 cat >> ~/.ssh/config << 'EOF'
-Host truenas-*
+Host 10.0.2.10
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     ServerAliveInterval 60
@@ -194,30 +194,7 @@ Host truenas-*
 EOF
 ```
 
-## Performance Optimization
 
-### 1. SSH Multiplexing
-
-Already configured in SSH config above - reuses connections for better performance.
-
-### 2. Ansible Configuration
-
-```bash
-# Add to ansible.cfg for better performance
-cat >> ansible.cfg << 'EOF'
-[defaults]
-forks = 20
-poll_interval = 15
-gathering = smart
-fact_caching = jsonfile
-fact_caching_connection = ./cache/facts
-fact_caching_timeout = 86400
-
-[ssh_connection]
-pipelining = True
-ssh_args = -o ControlMaster=auto -o ControlPersist=60s
-EOF
-```
 
 ## Ready to Proceed!
 

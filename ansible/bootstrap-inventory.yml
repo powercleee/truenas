@@ -4,9 +4,10 @@
 
 all:
   hosts:
-    truenas-server:
+    truenas-bootstrap:  # Different name to avoid host_vars override
       ansible_host: 10.0.2.10  # Change to your TrueNAS IP
       ansible_user: truenas_admin  # Using default admin for bootstrap only
+      ansible_python_interpreter: /usr/bin/python3
       ansible_become: true
       ansible_become_method: sudo
       ansible_become_user: root
