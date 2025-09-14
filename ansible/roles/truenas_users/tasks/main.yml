@@ -1,76 +1,200 @@
 ---
-- name: Create service groups
-  group:
-    name: "{{ item.name }}"
-    gid: "{{ item.gid }}"
-    state: present
+- name: Check existing service groups via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/group?name={{ item.name }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200, 404]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ service_groups }}"
+  register: group_check_results
   tags:
     - users
     - groups
+    - api
 
-- name: Create service users
-  user:
-    name: "{{ item.name }}"
-    uid: "{{ item.uid }}"
-    group: "{{ item.group }}"
-    home: "{{ '/mnt/' + zfs_pool + ('/databases/' if item.category == 'Database' else '/apps/') + item.name }}"
-    shell: /bin/false
-    comment: "{{ item.description }}"
-    create_home: false
-    system: true
-    state: present
-  loop: "{{ service_users }}"
+- name: Create service groups via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/group"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.item.name }}"
+      gid: "{{ item.item.gid }}"
+      smb: false
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+  loop: "{{ group_check_results.results }}"
+  when: item.status == 404 or (item.status == 200 and item.json | length == 0)
+  register: group_creation_results
   tags:
     - users
+    - groups
+    - api
+
+- name: Get final group database IDs for all service groups
+  uri:
+    url: "{{ truenas_api_url }}/group?name={{ item.name }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+  loop: "{{ service_groups }}"
+  register: final_group_check_results
+  tags:
+    - users
+    - groups
+    - api
+
+- name: Build group name to database ID mapping
+  set_fact:
+    group_id_map: "{{ group_id_map | default({}) | combine({item.item.name: item.json[0].id}) }}"
+  loop: "{{ final_group_check_results.results }}"
+  when: item.json | length > 0
+  tags:
+    - users
+    - groups
+    - api
+
+- name: Create service users via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/user"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      username: "{{ item.name }}"
+      uid: "{{ item.uid }}"
+      group: "{{ group_id_map[item.group] }}"
+      home: "{{ '/mnt/' + zfs_pool + ('/databases/' if item.category == 'Database' else '/apps/') + item.name }}"
+      shell: "/usr/sbin/nologin"
+      full_name: "{{ item.description }}"
+      home_create: false
+      smb: false
+      password_disabled: true
+      locked: false
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+  loop: "{{ service_users }}"
+  register: user_creation_results
+  tags:
+    - users
+    - api
+
+- name: Get user database IDs for supplementary group assignments
+  uri:
+    url: "{{ truenas_api_url }}/user?username={{ item }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+  loop: "{{ (supplementary_groups.download_access + supplementary_groups.media_access + supplementary_groups.container_access + supplementary_groups.monitor_access) | unique }}"
+  register: user_lookup_results
+  tags:
+    - users
+    - group_memberships
+    - api
+
+- name: Build user name to database ID mapping
+  set_fact:
+    user_id_map: "{{ user_id_map | default({}) | combine({item.item: item.json[0].id}) }}"
+  loop: "{{ user_lookup_results.results }}"
+  when: item.json | length > 0
+  tags:
+    - users
+    - group_memberships
+    - api
 
 - name: Configure supplementary group memberships - download access
-  user:
-    name: "{{ item }}"
-    groups: download
-    append: true
+  uri:
+    url: "{{ truenas_api_url }}/user/id/{{ user_id_map[item] }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      groups: ["{{ group_id_map[lookup('vars', item + '_primary_group') | default(service_users | selectattr('name', 'equalto', item) | map(attribute='group') | first)] }}", "{{ group_id_map['download'] }}"]
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ supplementary_groups.download_access }}"
+  when: user_id_map[item] is defined and group_id_map['download'] is defined
   tags:
     - users
     - group_memberships
+    - api
 
 - name: Configure supplementary group memberships - media access
-  user:
-    name: "{{ item }}"
-    groups: media
-    append: true
+  uri:
+    url: "{{ truenas_api_url }}/user/id/{{ user_id_map[item] }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      groups: ["{{ group_id_map[lookup('vars', item + '_primary_group') | default(service_users | selectattr('name', 'equalto', item) | map(attribute='group') | first)] }}", "{{ group_id_map['media'] }}"]
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ supplementary_groups.media_access }}"
+  when: user_id_map[item] is defined and group_id_map['media'] is defined
   tags:
     - users
     - group_memberships
+    - api
 
 - name: Configure supplementary group memberships - container access
-  user:
-    name: "{{ item }}"
-    groups: containers
-    append: true
+  uri:
+    url: "{{ truenas_api_url }}/user/id/{{ user_id_map[item] }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      groups: ["{{ group_id_map[lookup('vars', item + '_primary_group') | default(service_users | selectattr('name', 'equalto', item) | map(attribute='group') | first)] }}", "{{ group_id_map['containers'] }}"]
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ supplementary_groups.container_access }}"
+  when: user_id_map[item] is defined and group_id_map['containers'] is defined
   tags:
     - users
     - group_memberships
+    - api
 
 - name: Configure supplementary group memberships - monitor access
-  user:
-    name: "{{ item }}"
-    groups: monitor
-    append: true
+  uri:
+    url: "{{ truenas_api_url }}/user/id/{{ user_id_map[item] }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      groups: ["{{ group_id_map[lookup('vars', item + '_primary_group') | default(service_users | selectattr('name', 'equalto', item) | map(attribute='group') | first)] }}", "{{ group_id_map['monitor'] }}"]
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ supplementary_groups.monitor_access }}"
+  when: user_id_map[item] is defined and group_id_map['monitor'] is defined
   tags:
     - users
     - group_memberships
+    - api
 
 - name: Generate users and groups reference file
   template:
     src: users_groups_reference.txt.j2
-    dest: /root/users_groups_reference.txt
-    owner: root
-    group: root
+    dest: /tmp/users_groups_reference.txt
     mode: '0644'
+  delegate_to: localhost
   tags:
     - users
     - documentation
@@ -78,11 +202,24 @@
 - name: Generate Docker Compose environment file
   template:
     src: docker_users.env.j2
-    dest: /root/docker_users.env
-    owner: root
-    group: root
+    dest: /tmp/docker_users.env
     mode: '0644'
+  delegate_to: localhost
   tags:
     - users
     - documentation
     - docker
+
+- name: Display TrueNAS API user creation summary
+  debug:
+    msg:
+      - "User and group creation completed via TrueNAS API"
+      - "Groups created: {{ service_groups | length }}"
+      - "Users created: {{ service_users | length }}"
+      - "Group DB ID mapping: {{ group_id_map | default('N/A') }}"
+      - "User DB ID mapping: {{ user_id_map | default('N/A') }}"
+      - "Reference files generated in /tmp/"
+      - "Check TrueNAS Web UI > Credentials > Local Users/Groups to verify"
+  tags:
+    - users
+    - summary

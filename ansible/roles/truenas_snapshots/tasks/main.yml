@@ -1,30 +1,57 @@
 ---
-- name: Include snapshot method specific tasks
-  include_tasks: "{{ snapshot_method }}.yml"
+- name: Create TrueNAS snapshot tasks via API
+  uri:
+    url: "{{ truenas_api_url }}/pool/snapshottask"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      dataset: "{{ item.dataset }}"
+      recursive: "{{ item.recursive }}"
+      exclude: "{{ item.exclude | default([]) }}"
+      lifetime_value: "{{ item.lifetime_value }}"
+      lifetime_unit: "{{ item.lifetime_unit }}"
+      naming_schema: "{{ item.naming_schema }}"
+      schedule:
+        minute: "{{ item.schedule.minute }}"
+        hour: "{{ item.schedule.hour }}"
+        dom: "{{ item.schedule.dom }}"
+        month: "{{ item.schedule.month }}"
+        dow: "{{ item.schedule.dow }}"
+      allow_empty: "{{ item.allow_empty }}"
+      enabled: "{{ item.enabled }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+  loop: "{{ truenas_snapshot_tasks }}"
+  register: snapshot_task_results
   tags:
     - snapshots
+    - truenas_api
+    - api
 
-- name: Create snapshot management scripts
+- name: Generate snapshot management scripts
   template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
-    owner: root
-    group: root
     mode: "{{ item.mode }}"
   loop:
-    - { src: cleanup_snapshots.sh.j2, dest: /usr/local/bin/cleanup_snapshots.sh, mode: '0755' }
-    - { src: snapshot_report.sh.j2, dest: /usr/local/bin/snapshot_report.sh, mode: '0755' }
+    - { src: cleanup_snapshots.sh.j2, dest: /tmp/cleanup_snapshots.sh, mode: '0755' }
+    - { src: snapshot_report.sh.j2, dest: /tmp/snapshot_report.sh, mode: '0755' }
+  delegate_to: localhost
   tags:
     - snapshots
     - scripts
 
-- name: Create log directory for snapshot operations
-  file:
-    path: "{{ sanoid_log_dir }}"
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
+- name: Display TrueNAS API snapshot configuration summary
+  debug:
+    msg:
+      - "Snapshot tasks created via TrueNAS API"
+      - "Number of snapshot tasks: {{ truenas_snapshot_tasks | length }}"
+      - "Management scripts generated in /tmp/"
+      - "Check TrueNAS Web UI > Data Protection > Periodic Snapshot Tasks"
+      - "All snapshot tasks are now managed through TrueNAS middleware"
   tags:
     - snapshots
-    - logging
+    - summary

@@ -2,6 +2,11 @@
 # Default ZFS pool name
 zfs_pool: tank
 
+# TrueNAS API Configuration
+truenas_api_url: "https://{{ ansible_host }}/api/v2.0"
+truenas_api_key: "{{ vault_truenas_api_key }}"
+truenas_validate_certs: true
+
 # Default ZFS properties
 default_compression: lz4
 default_atime: off

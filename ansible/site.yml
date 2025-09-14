@@ -7,11 +7,15 @@
     zfs_pool: "{{ hostvars[inventory_hostname]['zfs_pool'] | default('tank') }}"
 
   pre_tasks:
-    - name: Verify ZFS pool exists
-      command: zpool status {{ zfs_pool }}
+    - name: Verify ZFS pool exists via TrueNAS API
+      uri:
+        url: "{{ truenas_api_url }}/pool/{{ zfs_pool }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        status_code: [200]
+        validate_certs: "{{ truenas_validate_certs | default(true) }}"
       register: pool_status
-      failed_when: pool_status.rc != 0
-      changed_when: false
       tags: always
 
     - name: Display setup information
@@ -53,14 +57,13 @@
           - "1. Deploy your containerized services using the created users and datasets"
           - "2. Configure application-specific permissions as needed"
           - "3. Monitor snapshot operations and adjust retention policies if required"
-          - "4. Review generated reference files in /root/ (users_groups_reference.txt, docker_users.env)"
+          - "4. Review generated reference files in /tmp/ (users_groups_reference.txt, docker_users.env)"
       tags: always
 
     - name: Generate deployment summary
       template:
         src: deployment_summary.md.j2
-        dest: /root/truenas_deployment_summary.md
-        owner: root
-        group: root
+        dest: /tmp/truenas_deployment_summary.md
         mode: '0644'
+      delegate_to: localhost
       tags: always

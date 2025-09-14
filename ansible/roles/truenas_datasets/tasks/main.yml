@@ -1,215 +1,456 @@
 ---
-- name: Create main datasets
-  community.general.zfs:
-    name: "{{ item.name }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "{{ item.recordsize }}"
-      compression: "{{ item.compression | default(default_compression) }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create main datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "{{ item.recordsize }}"
+        compression:
+          value: "{{ item.compression | default(default_compression) }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ main_datasets }}"
+  register: main_dataset_results
   tags:
     - datasets
     - main_datasets
+    - api
 
-- name: Create container runtime datasets
-  community.general.zfs:
-    name: "{{ item.name }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "{{ item.recordsize }}"
-      compression: "{{ default_compression }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create container runtime datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "{{ item.recordsize }}"
+        compression:
+          value: "{{ default_compression }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ container_datasets }}"
+  register: container_dataset_results
   tags:
     - datasets
     - container_datasets
+    - api
 
-- name: Create application datasets
-  community.general.zfs:
-    name: "{{ zfs_pool }}/apps/{{ item.1 }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "128K"
-      compression: "{{ default_compression }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create application datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ zfs_pool }}/apps/{{ item.1 }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "128K"
+        compression:
+          value: "{{ default_compression }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ app_categories | dict2items | subelements('value') }}"
+  register: app_dataset_results
   tags:
     - datasets
     - app_datasets
+    - api
 
-- name: Create media subdatasets
-  community.general.zfs:
-    name: "{{ item.name }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "{{ item.recordsize }}"
-      compression: "{{ item.compression | default(default_compression) }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create media subdatasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "{{ item.recordsize }}"
+        compression:
+          value: "{{ item.compression | default(default_compression) }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ media_subdatasets }}"
+  register: media_dataset_results
   tags:
     - datasets
     - media_datasets
+    - api
 
-- name: Create download subdatasets
-  community.general.zfs:
-    name: "{{ item.name }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "{{ item.recordsize }}"
-      compression: "{{ default_compression }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create download subdatasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "{{ item.recordsize }}"
+        compression:
+          value: "{{ default_compression }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ download_subdatasets }}"
+  register: download_dataset_results
   tags:
     - datasets
     - download_datasets
+    - api
 
-- name: Create database datasets
-  community.general.zfs:
-    name: "{{ item.name }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "{{ item.recordsize }}"
-      compression: "{{ default_compression }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create database datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "{{ item.recordsize }}"
+        compression:
+          value: "{{ default_compression }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ database_datasets }}"
+  register: database_dataset_results
   tags:
     - datasets
     - database_datasets
+    - api
 
-- name: Create backup subdatasets
-  community.general.zfs:
-    name: "{{ item.name }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "{{ item.recordsize }}"
-      compression: "{{ default_compression }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create backup subdatasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "{{ item.recordsize }}"
+        compression:
+          value: "{{ default_compression }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ backup_subdatasets }}"
+  register: backup_dataset_results
   tags:
     - datasets
     - backup_datasets
+    - api
 
-- name: Create log datasets for all services
-  community.general.zfs:
-    name: "{{ zfs_pool }}/logs/{{ item }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "128K"
-      compression: "{{ default_compression }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create log datasets for all services via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ zfs_pool }}/logs/{{ item }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "128K"
+        compression:
+          value: "{{ default_compression }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ all_services + system_logs }}"
+  register: log_dataset_results
   tags:
     - datasets
     - log_datasets
+    - api
 
-- name: Create system datasets
-  community.general.zfs:
-    name: "{{ item.name }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "{{ item.recordsize }}"
-      compression: "{{ default_compression }}"
-      atime: "{{ default_atime }}"
-      xattr: "{{ default_xattr }}"
+- name: Create system datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      type: "FILESYSTEM"
+      properties:
+        recordsize:
+          value: "{{ item.recordsize }}"
+        compression:
+          value: "{{ default_compression }}"
+        atime:
+          value: "{{ default_atime }}"
+        xattr:
+          value: "{{ default_xattr }}"
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ system_datasets }}"
+  register: system_dataset_results
   tags:
     - datasets
     - system_datasets
+    - api
 
-- name: Apply special recordsize adjustments
-  community.general.zfs:
-    name: "{{ item.dataset }}"
-    state: present
-    extra_zfs_properties:
-      recordsize: "{{ item.recordsize }}"
+- name: Apply special recordsize adjustments via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.dataset | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize:
+          value: "{{ item.recordsize }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ special_recordsizes }}"
+  register: special_recordsize_results
   tags:
     - datasets
     - special_adjustments
+    - api
 
-- name: Create mountpoints and set permissions for application directories
-  file:
-    path: "/mnt/{{ zfs_pool }}/apps/{{ item.1 }}"
-    state: directory
-    owner: "{{ item.1 }}"
-    group: "{{ item.0.key }}"
-    mode: '0755'
+- name: Set permissions for application directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "/mnt/{{ zfs_pool }}/apps/{{ item.1 }}"
+      mode: "755"
+      user: "{{ item.1 }}"
+      group: "{{ item.0.key }}"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ app_categories | dict2items | subelements('value') }}"
+  register: app_permission_results
   tags:
     - datasets
     - permissions
+    - api
 
-- name: Create mountpoints and set permissions for database directories
-  file:
-    path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
-    state: directory
-    owner: "{{ item.owner }}"
-    group: "{{ item.group }}"
-    mode: '0700'
+- name: Set permissions for database directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+      mode: "700"
+      user: "{{ item.owner }}"
+      group: "{{ item.group }}"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ database_datasets }}"
   when: item.owner is defined and item.group is defined
+  register: database_permission_results
   tags:
     - datasets
     - permissions
     - database_permissions
+    - api
 
-- name: Set permissions for media directories
-  file:
-    path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
-    state: directory
-    owner: plex
-    group: media
-    mode: '0775'
+- name: Set permissions for media directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+      mode: "775"
+      user: "plex"
+      group: "media"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ media_subdatasets }}"
+  register: media_permission_results
   tags:
     - datasets
     - permissions
     - media_permissions
+    - api
 
-- name: Set permissions for download directories
-  file:
-    path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
-    state: directory
-    owner: qbittorrent
-    group: download
-    mode: '0775'
+- name: Set permissions for download directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+      mode: "775"
+      user: "qbittorrent"
+      group: "download"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ download_subdatasets }}"
+  register: download_permission_results
   tags:
     - datasets
     - permissions
     - download_permissions
+    - api
 
-- name: Create and set permissions for log directories
-  file:
-    path: "/mnt/{{ zfs_pool }}/logs/{{ item }}"
-    state: directory
-    owner: "{{ item }}"
-    group: monitor
-    mode: '0755'
+- name: Set permissions for log directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "/mnt/{{ zfs_pool }}/logs/{{ item }}"
+      mode: "755"
+      user: "{{ item }}"
+      group: "monitor"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ all_services }}"
+  register: log_permission_results
   tags:
     - datasets
     - permissions
     - log_permissions
+    - api
 
-- name: Set permissions for system log directories
-  file:
-    path: "/mnt/{{ zfs_pool }}/logs/{{ item }}"
-    state: directory
-    owner: root
-    group: monitor
-    mode: '0755'
+- name: Set permissions for system log directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "/mnt/{{ zfs_pool }}/logs/{{ item }}"
+      mode: "755"
+      user: "root"
+      group: "monitor"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs | default(true) }}"
   loop: "{{ system_logs }}"
+  register: system_log_permission_results
   tags:
     - datasets
     - permissions
     - system_log_permissions
+    - api
+
+- name: Display TrueNAS API dataset creation summary
+  debug:
+    msg:
+      - "Dataset creation completed via TrueNAS API"
+      - "Main datasets: {{ main_datasets | length }}"
+      - "Container datasets: {{ container_datasets | length }}"
+      - "Application datasets: {{ app_categories | dict2items | sumelements('value') | length }}"
+      - "Media datasets: {{ media_subdatasets | length }}"
+      - "Download datasets: {{ download_subdatasets | length }}"
+      - "Database datasets: {{ database_datasets | length }}"
+      - "Backup datasets: {{ backup_subdatasets | length }}"
+      - "Log datasets: {{ (all_services + system_logs) | length }}"
+      - "System datasets: {{ system_datasets | length }}"
+      - "Check TrueNAS Web UI > Storage > Pools to verify datasets"
+  tags:
+    - datasets
+    - summary

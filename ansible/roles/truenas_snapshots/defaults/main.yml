@@ -2,8 +2,13 @@
 # Default ZFS pool name
 zfs_pool: tank
 
-# Snapshot configuration method - choose between 'truenas_api', 'sanoid', or 'zfs_auto_snapshot'
-snapshot_method: sanoid
+# TrueNAS API Configuration
+truenas_api_url: "https://{{ ansible_host }}/api/v2.0"
+truenas_api_key: "{{ vault_truenas_api_key }}"
+truenas_validate_certs: true
+
+# Snapshot configuration method - now using TrueNAS API exclusively
+snapshot_method: truenas_api
 
 # TrueNAS SCALE Snapshot Tasks Configuration
 truenas_snapshot_tasks:
