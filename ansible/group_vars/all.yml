@@ -6,7 +6,7 @@ zfs_pool: tank
 
 # Snapshot configuration method
 # Options: 'sanoid', 'truenas_api', 'zfs_auto_snapshot'
-snapshot_method: sanoid
+snapshot_method: truenas_api
 
 # Global ZFS properties
 zfs_properties:
