@@ -85,7 +85,7 @@
       username: "{{ item.name }}"
       uid: "{{ item.uid }}"
       group: "{{ group_id_map[item.group] }}"
-      home: "{{ '/mnt/' + zfs_pool + ('/databases/' if item.category == 'Database' else '/apps/') + item.name }}"
+      home: "/nonexistent"
       shell: "/usr/sbin/nologin"
       full_name: "{{ item.description }}"
       home_create: false
@@ -230,6 +230,55 @@
     - users
     - documentation
     - docker
+
+- name: Get user database IDs for home directory updates
+  uri:
+    url: "{{ truenas_api_url }}/user?username={{ item.name }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ service_users }}"
+  register: all_user_lookup_results
+  check_mode: false
+  tags:
+    - users
+    - home_directories
+    - post_datasets
+    - api
+
+- name: Build complete user name to database ID mapping
+  set_fact:
+    all_user_id_map: "{{ all_user_id_map | default({}) | combine({item.item.name: item.json[0].id}) }}"
+  loop: "{{ all_user_lookup_results.results }}"
+  when: (item.skipped is not defined or not item.skipped) and item.json | length > 0
+  tags:
+    - users
+    - home_directories
+    - post_datasets
+    - api
+
+- name: Update user home directories after datasets are created
+  uri:
+    url: "{{ truenas_api_url }}/user/id/{{ all_user_id_map[item.name] }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      home: "{{ '/mnt/' + zfs_pool + ('/databases/' if item.category == 'Database' else '/apps/') + item.name }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ service_users }}"
+  when: all_user_id_map[item.name] is defined
+  register: user_home_update_results
+  tags:
+    - users
+    - home_directories
+    - post_datasets
+    - api
 
 - name: Display TrueNAS API user creation summary
   debug:

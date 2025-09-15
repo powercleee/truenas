@@ -6,6 +6,23 @@ This Ansible project automates the complete setup of a TrueNAS SCALE infrastruct
 
 This Ansible implementation replaces the original bash scripts with a more maintainable, idempotent, and scalable infrastructure-as-code approach for TrueNAS SCALE 25.10.
 
+### TrueNAS API Integration
+
+**Important**: This project uses the **TrueNAS SCALE Middleware API** instead of direct system commands for:
+- User and group management (`/api/v2.0/user`, `/api/v2.0/group`)
+- ZFS dataset operations (`/api/v2.0/pool/dataset`)
+- File system permissions (`/api/v2.0/filesystem/setperm`)
+
+This ensures compatibility with TrueNAS SCALE's middleware and prevents conflicts with the web interface.
+
+### Dependency Resolution
+
+The 4-phase execution sequence resolves the circular dependency where:
+- **Users require datasets** (for home directory paths)
+- **Dataset permissions require users** (for ownership assignment)
+
+The solution separates dataset creation from permission assignment, allowing proper sequencing.
+
 ### What This Does
 
 - Creates **61 service users** across **11 functional groups**
@@ -23,7 +40,7 @@ This Ansible implementation replaces the original bash scripts with a more maint
 - **Dedicated User**: `ansible` user with SSH key authentication
 - **Storage**: ZFS pool named `tank` (or customize in inventory)
 
-**⚠️ Important:** This project uses a dedicated `ansible` user (UID: 1500) instead of root or truenas_admin for security. See setup guides below for complete instructions.
+**⚠️ Important:** This project uses a dedicated `ansible` user with admin privileges for API operations. The playbook runs locally and connects via HTTPS API calls instead of SSH.
 
 ### Setup Guides
 
@@ -77,15 +94,38 @@ This Ansible implementation replaces the original bash scripts with a more maint
    # Should show all green checkmarks ✅
    ```
 
-6. **Run the Playbook**
-   ```bash
-   # Full infrastructure setup
-   ansible-playbook site.yml
+6. **Run the Playbook** (4-Phase Execution)
 
-   # Or run specific components
-   ansible-playbook site.yml --tags users
-   ansible-playbook site.yml --tags datasets
-   ansible-playbook site.yml --tags snapshots
+   ⚠️ **Important**: Due to dependencies between users and datasets, you must run the playbook in the following **4 phases**:
+
+   **Phase 1: Groups + Dataset Structure**
+   ```bash
+   ansible-playbook -i inventories/hosts.yml site.yml --tags "groups,datasets" --skip-tags "permissions,post_users" --diff
+   ```
+   *Creates groups and ZFS datasets/directories without setting ownership*
+
+   **Phase 2: Users (with temporary homes)**
+   ```bash
+   ansible-playbook -i inventories/hosts.yml site.yml --tags "users" --skip-tags "home_directories,post_datasets" --diff
+   ```
+   *Creates all service users with temporary home directories*
+
+   **Phase 3: Home Directories + Permissions**
+   ```bash
+   ansible-playbook -i inventories/hosts.yml site.yml --tags "home_directories,permissions,post_users" --diff
+   ```
+   *Updates user home directories and sets all dataset permissions*
+
+   **Phase 4: Snapshots**
+   ```bash
+   ansible-playbook -i inventories/hosts.yml site.yml --tags "snapshots" --diff
+   ```
+   *Configures automated snapshot management*
+
+   **Alternative: All-in-One (Advanced Users)**
+   ```bash
+   # Only if you understand the dependencies
+   ansible-playbook -i inventories/hosts.yml site.yml --diff
    ```
 
 ## Architecture
@@ -294,19 +334,24 @@ spec:
 ### Common Commands
 
 ```bash
-# Check deployment status
-ansible-playbook site.yml --check --diff
+# Check deployment status (dry-run all phases)
+ansible-playbook -i inventories/hosts.yml site.yml --check --diff
 
-# Update only users
-ansible-playbook site.yml --tags users
+# Update specific components (respecting dependencies)
+ansible-playbook -i inventories/hosts.yml site.yml --tags "users" --skip-tags "home_directories" --diff
+ansible-playbook -i inventories/hosts.yml site.yml --tags "datasets" --skip-tags "permissions" --diff
+ansible-playbook -i inventories/hosts.yml site.yml --tags "permissions,post_users" --diff
 
-# Verify ZFS datasets
-ansible truenas -m shell -a "zfs list | grep tank"
+# Re-run specific phases
+ansible-playbook -i inventories/hosts.yml site.yml --tags "groups,datasets" --skip-tags "permissions,post_users" --diff
+ansible-playbook -i inventories/hosts.yml site.yml --tags "home_directories,permissions,post_users" --diff
 
-# Check service users
-ansible truenas -m shell -a "getent passwd | grep 30[0-9][0-9]"
+# Verify infrastructure
+ansible truenas -m shell -a "zfs list | grep tank"  # Check ZFS datasets
+ansible truenas -m shell -a "getent passwd | grep 30[0-9][0-9]"  # Check service users
+ansible truenas -m shell -a "getent group | grep 20[0-9][0-9]"   # Check service groups
 
-# Snapshot report
+# Snapshot management
 ansible truenas -m shell -a "/usr/local/bin/snapshot_report.sh"
 ```
 
@@ -388,3 +433,38 @@ For issues specific to this Ansible implementation, check:
 4. Generated reference files in `/root/`
 
 Original bash scripts remain available for comparison and fallback if needed.
+
+## Quick Reference: 4-Phase Execution
+
+For quick copy-paste, here are the exact commands for production deployment:
+
+```bash
+# Phase 1: Groups + Dataset Structure
+ansible-playbook -i inventories/hosts.yml site.yml --tags "groups,datasets" --skip-tags "permissions,post_users" --diff
+
+# Phase 2: Users (with temporary homes)
+ansible-playbook -i inventories/hosts.yml site.yml --tags "users" --skip-tags "home_directories,post_datasets" --diff
+
+# Phase 3: Home Directories + Permissions
+ansible-playbook -i inventories/hosts.yml site.yml --tags "home_directories,permissions,post_users" --diff
+
+# Phase 4: Snapshots
+ansible-playbook -i inventories/hosts.yml site.yml --tags "snapshots" --diff
+```
+
+**Verification between phases:**
+```bash
+# After Phase 1 - Check datasets exist
+ansible truenas -m shell -a "zfs list | grep tank"
+
+# After Phase 2 - Check users were created
+ansible truenas -m shell -a "getent passwd | grep 30[0-9][0-9]"
+
+# After Phase 3 - Check home directories and permissions
+ansible truenas -m shell -a "ls -la /mnt/tank/apps/ | head -10"
+
+# After Phase 4 - Check snapshot tasks
+ansible truenas -m shell -a "cat /etc/cron.d/sanoid 2>/dev/null || echo 'TrueNAS native snapshots configured'"
+```
+
+See [README_API_MIGRATION.md](README_API_MIGRATION.md) for detailed technical information about the API integration and dependency resolution.

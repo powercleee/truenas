@@ -10,15 +10,6 @@
     body:
       name: "{{ item.name }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "{{ item.recordsize }}"
-        compression:
-          value: "{{ item.compression | default(default_compression) }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ main_datasets }}"
@@ -26,6 +17,30 @@
   tags:
     - datasets
     - main_datasets
+    - api
+
+- name: Set properties for main datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "{{ item.recordsize }}"
+        compression: "{{ item.compression | default(default_compression) }}"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ main_datasets }}"
+  register: main_dataset_properties_results
+  tags:
+    - datasets
+    - main_datasets
+    - properties
     - api
 
 - name: Create container runtime datasets via TrueNAS API
@@ -39,15 +54,6 @@
     body:
       name: "{{ item.name }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "{{ item.recordsize }}"
-        compression:
-          value: "{{ default_compression }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ container_datasets }}"
@@ -55,6 +61,30 @@
   tags:
     - datasets
     - container_datasets
+    - api
+
+- name: Set properties for container datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "128K"
+        compression: "{{ default_compression }}"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ container_datasets }}"
+  register: container_dataset_properties_results
+  tags:
+    - datasets
+    - container_datasets
+    - properties
     - api
 
 - name: Create application datasets via TrueNAS API
@@ -68,15 +98,6 @@
     body:
       name: "{{ zfs_pool }}/apps/{{ item.1 }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "128K"
-        compression:
-          value: "{{ default_compression }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ app_categories | dict2items | subelements('value') }}"
@@ -84,6 +105,30 @@
   tags:
     - datasets
     - app_datasets
+    - api
+
+- name: Set properties for application datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/apps/' + item.1) | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "128K"
+        compression: "{{ default_compression }}"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ app_categories | dict2items | subelements('value') }}"
+  register: app_dataset_properties_results
+  tags:
+    - datasets
+    - app_datasets
+    - properties
     - api
 
 - name: Create media subdatasets via TrueNAS API
@@ -97,15 +142,6 @@
     body:
       name: "{{ item.name }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "{{ item.recordsize }}"
-        compression:
-          value: "{{ item.compression | default(default_compression) }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ media_subdatasets }}"
@@ -113,6 +149,30 @@
   tags:
     - datasets
     - media_datasets
+    - api
+
+- name: Set properties for media datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "1M"
+        compression: "off"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ media_subdatasets }}"
+  register: media_dataset_properties_results
+  tags:
+    - datasets
+    - media_datasets
+    - properties
     - api
 
 - name: Create download subdatasets via TrueNAS API
@@ -126,15 +186,6 @@
     body:
       name: "{{ item.name }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "{{ item.recordsize }}"
-        compression:
-          value: "{{ default_compression }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ download_subdatasets }}"
@@ -142,6 +193,30 @@
   tags:
     - datasets
     - download_datasets
+    - api
+
+- name: Set properties for download datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "128K"
+        compression: "{{ default_compression }}"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ download_subdatasets }}"
+  register: download_dataset_properties_results
+  tags:
+    - datasets
+    - download_datasets
+    - properties
     - api
 
 - name: Create database datasets via TrueNAS API
@@ -155,15 +230,6 @@
     body:
       name: "{{ item.name }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "{{ item.recordsize }}"
-        compression:
-          value: "{{ default_compression }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ database_datasets }}"
@@ -171,6 +237,30 @@
   tags:
     - datasets
     - database_datasets
+    - api
+
+- name: Set properties for database datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "16K"
+        compression: "{{ default_compression }}"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ database_datasets }}"
+  register: database_dataset_properties_results
+  tags:
+    - datasets
+    - database_datasets
+    - properties
     - api
 
 - name: Create backup subdatasets via TrueNAS API
@@ -184,15 +274,6 @@
     body:
       name: "{{ item.name }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "{{ item.recordsize }}"
-        compression:
-          value: "{{ default_compression }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ backup_subdatasets }}"
@@ -200,6 +281,30 @@
   tags:
     - datasets
     - backup_datasets
+    - api
+
+- name: Set properties for backup datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "1M"
+        compression: "{{ default_compression }}"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ backup_subdatasets }}"
+  register: backup_dataset_properties_results
+  tags:
+    - datasets
+    - backup_datasets
+    - properties
     - api
 
 - name: Create log datasets for all services via TrueNAS API
@@ -213,15 +318,6 @@
     body:
       name: "{{ zfs_pool }}/logs/{{ item }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "128K"
-        compression:
-          value: "{{ default_compression }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ all_services + system_logs }}"
@@ -229,6 +325,30 @@
   tags:
     - datasets
     - log_datasets
+    - api
+
+- name: Set properties for log datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/logs/' + item) | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "128K"
+        compression: "{{ default_compression }}"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ all_services + system_logs }}"
+  register: log_dataset_properties_results
+  tags:
+    - datasets
+    - log_datasets
+    - properties
     - api
 
 - name: Create system datasets via TrueNAS API
@@ -242,15 +362,6 @@
     body:
       name: "{{ item.name }}"
       type: "FILESYSTEM"
-      properties:
-        recordsize:
-          value: "{{ item.recordsize }}"
-        compression:
-          value: "{{ default_compression }}"
-        atime:
-          value: "{{ default_atime }}"
-        xattr:
-          value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ system_datasets }}"
@@ -258,6 +369,30 @@
   tags:
     - datasets
     - system_datasets
+    - api
+
+- name: Set properties for system datasets via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      properties:
+        recordsize: "128K"
+        compression: "{{ default_compression }}"
+        atime: "{{ default_atime }}"
+        xattr: "{{ default_xattr }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ system_datasets }}"
+  register: system_dataset_properties_results
+  tags:
+    - datasets
+    - system_datasets
+    - properties
     - api
 
 - name: Apply special recordsize adjustments via TrueNAS API
@@ -270,8 +405,7 @@
     body_format: json
     body:
       properties:
-        recordsize:
-          value: "{{ item.recordsize }}"
+        recordsize: "{{ item.recordsize }}"
     status_code: [200]
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ special_recordsizes }}"
@@ -304,6 +438,7 @@
   tags:
     - datasets
     - permissions
+    - post_users
     - api
 
 - name: Set permissions for database directories via TrueNAS API

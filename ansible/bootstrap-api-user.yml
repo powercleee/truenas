@@ -117,6 +117,42 @@
       delegate_to: localhost
       when: not user_exists
 
+    - name: Get builtin administrators group ID
+      uri:
+        url: "{{ truenas_api_url }}/group?name=builtin_administrators"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        validate_certs: false
+      register: admin_group_check
+      delegate_to: localhost
+
+    - name: Get ansible user ID for group membership update
+      uri:
+        url: "{{ truenas_api_url }}/user?username={{ ansible_user_name }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        validate_certs: false
+      register: ansible_user_check
+      delegate_to: localhost
+
+    - name: Add ansible user to builtin administrators group for API access
+      uri:
+        url: "{{ truenas_api_url }}/user/id/{{ ansible_user_check.json[0].id }}"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          groups: ["{{ actual_group_id }}", "{{ admin_group_check.json[0].id }}"]
+        validate_certs: false
+        status_code: [200]
+      register: admin_group_result
+      delegate_to: localhost
+      when: ansible_user_check.json | length > 0 and admin_group_check.json | length > 0
+
     - name: Verify API user creation was successful
       uri:
         url: "{{ truenas_api_url }}/user?username={{ ansible_user_name }}"
@@ -134,15 +170,22 @@
           - "=== TrueNAS API Bootstrap Complete ==="
           - "User: {{ ansible_user_name }} (UID: {{ ansible_user_uid }}) - {{ 'CREATED' if not user_exists else 'ALREADY EXISTS' }}"
           - "Group: {{ ansible_group_name }} (GID: {{ ansible_group_gid }}) - {{ 'CREATED' if not group_exists else 'ALREADY EXISTS' }}"
-          - "Type: API Service Account (no SSH access)"
-          - "Shell: /usr/sbin/nologin (API only)"
+          - "Admin Privileges: GRANTED (member of builtin_administrators)"
+          - "Type: API Service Account with admin privileges"
+          - "Shell: /usr/sbin/nologin (API only, no SSH access)"
           - "User visible in TrueNAS UI: YES (created via middleware)"
           - "User ID: {{ final_user_check.json[0].id if final_user_check.json | length > 0 else 'N/A' }}"
+          - "Can create API keys: YES (admin privileges granted)"
 
     - name: Show next steps
       debug:
         msg:
           - "Next steps:"
           - "1. Verify user appears in TrueNAS Web UI -> Credentials -> Local Users"
-          - "2. Create service users: ansible-playbook roles/truenas_users/create-service-users.yml"
-          - "3. Deploy infrastructure: ansible-playbook site.yml"
+          - "2. Generate API key: System -> API Keys -> Add (select 'ansible' user)"
+          - "3. Export API key: export TRUENAS_API_KEY='your-api-key-here'"
+          - "4. Deploy infrastructure using 4-phase execution:"
+          - "   ansible-playbook -i inventories/hosts.yml site.yml --tags 'groups,datasets' --skip-tags 'permissions,post_users' --diff"
+          - "   ansible-playbook -i inventories/hosts.yml site.yml --tags 'users' --skip-tags 'home_directories,post_datasets' --diff"
+          - "   ansible-playbook -i inventories/hosts.yml site.yml --tags 'home_directories,permissions,post_users' --diff"
+          - "   ansible-playbook -i inventories/hosts.yml site.yml --tags 'snapshots' --diff"

@@ -1,13 +1,54 @@
 # TrueNAS API Migration Guide
 
-This document explains the migration of Ansible roles from direct system commands to TrueNAS API calls.
+This document explains the migration of Ansible roles from direct system commands to TrueNAS API calls and the resolution of dependency conflicts.
 
 ## Overview
 
 All three roles have been updated to use the TrueNAS middleware API instead of direct system commands:
 
-- **truenas_users**: Creates users and groups via TrueNAS API
-- **truenas_datasets**: Creates ZFS datasets and sets permissions via TrueNAS API
+- **truenas_users**: Creates users and groups via TrueNAS API (`/api/v2.0/user`, `/api/v2.0/group`)
+- **truenas_datasets**: Creates ZFS datasets and sets permissions via TrueNAS API (`/api/v2.0/pool/dataset`, `/api/v2.0/filesystem/setperm`)
+- **truenas_snapshots**: Configures snapshot management via TrueNAS API (`/api/v2.0/pool/snapshottask`)
+
+## Critical Dependency Resolution
+
+### The Problem
+
+A circular dependency existed between users and datasets:
+1. **Users needed datasets** - Home directory paths required `/mnt/tank/apps/{service}` to exist
+2. **Dataset permissions needed users** - Ownership assignment (`chown`) required users to exist first
+
+### The Solution: 4-Phase Execution
+
+**Phase 1: Structure Creation**
+```bash
+ansible-playbook -i inventories/hosts.yml site.yml --tags "groups,datasets" --skip-tags "permissions,post_users" --diff
+```
+- Creates all service groups with proper GIDs
+- Creates all ZFS datasets and directory structure
+- **Skips** permission assignment (no `chown` operations)
+
+**Phase 2: User Creation**
+```bash
+ansible-playbook -i inventories/hosts.yml site.yml --tags "users" --skip-tags "home_directories,post_datasets" --diff
+```
+- Creates all service users with UIDs
+- Uses temporary home directory (`/nonexistent`)
+- **Skips** home directory assignment
+
+**Phase 3: Final Configuration**
+```bash
+ansible-playbook -i inventories/hosts.yml site.yml --tags "home_directories,permissions,post_users" --diff
+```
+- Updates user home directories to correct paths
+- Sets all dataset ownership and permissions
+- Configures supplementary group memberships
+
+**Phase 4: Snapshots**
+```bash
+ansible-playbook -i inventories/hosts.yml site.yml --tags "snapshots" --diff
+```
+- Configures automated snapshot management
 - **truenas_snapshots**: Configures snapshot tasks via TrueNAS API
 
 ## Prerequisites
