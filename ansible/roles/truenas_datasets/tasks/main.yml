@@ -1,400 +1,104 @@
 ---
-- name: Create main datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ item.name }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# Main datasets (apps, containers, media, downloads, databases, backups, logs, system)
+- name: Ensure main datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset.yml
   loop: "{{ main_datasets }}"
-  register: main_dataset_results
+  loop_control:
+    loop_var: dataset
   tags:
     - datasets
     - main_datasets
     - api
 
-- name: Set properties for main datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "{{ item.recordsize }}"
-        compression: "{{ item.compression | default(default_compression) }}"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ main_datasets }}"
-  register: main_dataset_properties_results
-  tags:
-    - datasets
-    - main_datasets
-    - properties
-    - api
-
-- name: Create container runtime datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ item.name }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# Container runtime datasets
+- name: Ensure container datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset.yml
   loop: "{{ container_datasets }}"
-  register: container_dataset_results
+  loop_control:
+    loop_var: dataset
   tags:
     - datasets
     - container_datasets
     - api
 
-- name: Set properties for container datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "128K"
-        compression: "{{ default_compression }}"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ container_datasets }}"
-  register: container_dataset_properties_results
-  tags:
-    - datasets
-    - container_datasets
-    - properties
-    - api
-
-- name: Create application datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ zfs_pool }}/apps/{{ item.1 }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# Application datasets (one per service)
+- name: Ensure application datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_app.yml
   loop: "{{ app_categories | dict2items | subelements('value') }}"
-  register: app_dataset_results
+  loop_control:
+    loop_var: app_item
   tags:
     - datasets
     - app_datasets
     - api
 
-- name: Set properties for application datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/apps/' + item.1) | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "128K"
-        compression: "{{ default_compression }}"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ app_categories | dict2items | subelements('value') }}"
-  register: app_dataset_properties_results
-  tags:
-    - datasets
-    - app_datasets
-    - properties
-    - api
-
-- name: Create media subdatasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ item.name }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# Media subdatasets
+- name: Ensure media subdatasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_media.yml
   loop: "{{ media_subdatasets }}"
-  register: media_dataset_results
+  loop_control:
+    loop_var: dataset
   tags:
     - datasets
     - media_datasets
     - api
 
-- name: Set properties for media datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "1M"
-        compression: "off"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ media_subdatasets }}"
-  register: media_dataset_properties_results
-  tags:
-    - datasets
-    - media_datasets
-    - properties
-    - api
-
-- name: Create download subdatasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ item.name }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# Download subdatasets
+- name: Ensure download subdatasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_downloads.yml
   loop: "{{ download_subdatasets }}"
-  register: download_dataset_results
+  loop_control:
+    loop_var: dataset
   tags:
     - datasets
     - download_datasets
     - api
 
-- name: Set properties for download datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "128K"
-        compression: "{{ default_compression }}"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ download_subdatasets }}"
-  register: download_dataset_properties_results
-  tags:
-    - datasets
-    - download_datasets
-    - properties
-    - api
-
-- name: Create database datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ item.name }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# Database datasets
+- name: Ensure database datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_database.yml
   loop: "{{ database_datasets }}"
-  register: database_dataset_results
+  loop_control:
+    loop_var: dataset
   tags:
     - datasets
     - database_datasets
     - api
 
-- name: Set properties for database datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "16K"
-        compression: "{{ default_compression }}"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ database_datasets }}"
-  register: database_dataset_properties_results
-  tags:
-    - datasets
-    - database_datasets
-    - properties
-    - api
-
-- name: Create backup subdatasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ item.name }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# Backup subdatasets
+- name: Ensure backup subdatasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_backup.yml
   loop: "{{ backup_subdatasets }}"
-  register: backup_dataset_results
+  loop_control:
+    loop_var: dataset
   tags:
     - datasets
     - backup_datasets
     - api
 
-- name: Set properties for backup datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "1M"
-        compression: "{{ default_compression }}"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ backup_subdatasets }}"
-  register: backup_dataset_properties_results
-  tags:
-    - datasets
-    - backup_datasets
-    - properties
-    - api
-
-- name: Create log datasets for all services via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ zfs_pool }}/logs/{{ item }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# Log datasets for all services
+- name: Ensure log datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_log.yml
   loop: "{{ all_services + system_logs }}"
-  register: log_dataset_results
+  loop_control:
+    loop_var: service_name
   tags:
     - datasets
     - log_datasets
     - api
 
-- name: Set properties for log datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/logs/' + item) | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "128K"
-        compression: "{{ default_compression }}"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ all_services + system_logs }}"
-  register: log_dataset_properties_results
-  tags:
-    - datasets
-    - log_datasets
-    - properties
-    - api
-
-- name: Create system datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      name: "{{ item.name }}"
-      type: "FILESYSTEM"
-    status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs }}"
+# System datasets
+- name: Ensure system datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset.yml
   loop: "{{ system_datasets }}"
-  register: system_dataset_results
+  loop_control:
+    loop_var: dataset
   tags:
     - datasets
     - system_datasets
     - api
 
-- name: Set properties for system datasets via TrueNAS API
-  uri:
-    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.name | replace('/', '%2F') }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      properties:
-        recordsize: "128K"
-        compression: "{{ default_compression }}"
-        atime: "{{ default_atime }}"
-        xattr: "{{ default_xattr }}"
-    status_code: [200]
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ system_datasets }}"
-  register: system_dataset_properties_results
-  tags:
-    - datasets
-    - system_datasets
-    - properties
-    - api
-
+# Special recordsize adjustments
 - name: Apply special recordsize adjustments via TrueNAS API
   uri:
     url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.dataset | replace('/', '%2F') }}"
@@ -404,8 +108,7 @@
       Content-Type: "application/json"
     body_format: json
     body:
-      properties:
-        recordsize: "{{ item.recordsize }}"
+      recordsize: "{{ item.recordsize }}"
     status_code: [200]
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ special_recordsizes }}"
@@ -415,6 +118,7 @@
     - special_adjustments
     - api
 
+# Permissions (after users are created)
 - name: Set permissions for application directories via TrueNAS API
   uri:
     url: "{{ truenas_api_url }}/filesystem/setperm"

@@ -8,15 +8,14 @@ truenas_api_key: "{{ lookup('env', 'TRUENAS_API_KEY') }}"
 truenas_validate_certs: false
 
 # Default ZFS properties
-default_compression: lz4
-default_atime: off
-default_xattr: sa
+default_compression: LZ4
+default_atime: "OFF"
 
 # Main datasets
 main_datasets:
   - { name: "{{ zfs_pool }}/apps", recordsize: "128K" }
   - { name: "{{ zfs_pool }}/containers", recordsize: "128K" }
-  - { name: "{{ zfs_pool }}/media", recordsize: "1M", compression: "off" }
+  - { name: "{{ zfs_pool }}/media", recordsize: "1M", compression: "OFF" }
   - { name: "{{ zfs_pool }}/downloads", recordsize: "128K" }
   - { name: "{{ zfs_pool }}/databases", recordsize: "16K" }
   - { name: "{{ zfs_pool }}/backups", recordsize: "1M" }
@@ -102,12 +101,12 @@ app_categories:
 
 # Media subdatasets
 media_subdatasets:
-  - { name: "{{ zfs_pool }}/media/movies", recordsize: "1M", compression: "off" }
-  - { name: "{{ zfs_pool }}/media/tv", recordsize: "1M", compression: "off" }
-  - { name: "{{ zfs_pool }}/media/music", recordsize: "1M", compression: "off" }
-  - { name: "{{ zfs_pool }}/media/books", recordsize: "1M", compression: "off" }
-  - { name: "{{ zfs_pool }}/media/audiobooks", recordsize: "1M", compression: "off" }
-  - { name: "{{ zfs_pool }}/media/podcasts", recordsize: "1M", compression: "off" }
+  - { name: "{{ zfs_pool }}/media/movies", recordsize: "1M", compression: "OFF" }
+  - { name: "{{ zfs_pool }}/media/tv", recordsize: "1M", compression: "OFF" }
+  - { name: "{{ zfs_pool }}/media/music", recordsize: "1M", compression: "OFF" }
+  - { name: "{{ zfs_pool }}/media/books", recordsize: "1M", compression: "OFF" }
+  - { name: "{{ zfs_pool }}/media/audiobooks", recordsize: "1M", compression: "OFF" }
+  - { name: "{{ zfs_pool }}/media/podcasts", recordsize: "1M", compression: "OFF" }
 
 # Download subdatasets
 download_subdatasets:

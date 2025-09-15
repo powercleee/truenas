@@ -1,0 +1,34 @@
+---
+- name: "Create or update log dataset {{ zfs_pool }}/logs/{{ service_name }} with properties"
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ zfs_pool }}/logs/{{ service_name }}"
+      type: "FILESYSTEM"
+      recordsize: "128K"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+    status_code: [200, 422]  # 200 = created, 422 = already exists
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: log_dataset_result
+
+- name: "Update properties for existing log dataset {{ zfs_pool }}/logs/{{ service_name }}"
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/logs/' + service_name) | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      recordsize: "128K"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  when: log_dataset_result.status == 422
