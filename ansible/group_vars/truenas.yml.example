@@ -3,12 +3,12 @@
 
 # TrueNAS API Configuration
 # Replace with your actual TrueNAS IP address or hostname
-ansible_host: "192.168.1.100"
+ansible_host: "10.0.2.10"
 
 # API Key Configuration
 # Generate an API key in TrueNAS Web UI: System > API Keys
-# Store the actual key in ansible-vault encrypted file
-vault_truenas_api_key: "your-api-key-here"
+# Export as environment variable: export TRUENAS_API_KEY="your-api-key-here"
+# The roles will automatically use: lookup('env', 'TRUENAS_API_KEY')
 
 # SSL Certificate Validation
 # Set to false if using self-signed certificates (not recommended for production)
@@ -17,7 +17,8 @@ truenas_validate_certs: false
 # Override default ZFS pool name if needed
 # zfs_pool: tank
 
-# Example vault file creation:
-# ansible-vault create group_vars/vault.yml
-# Add the following content to the vault file:
-# vault_truenas_api_key: "1-AbCdEfGhIjKlMnOpQrStUvWxYz1234567890AbCdEfGhIjKlMnOpQrStUvWxYz"
+# Example environment variable setup:
+# export TRUENAS_API_KEY="1-AbCdEfGhIjKlMnOpQrStUvWxYz1234567890AbCdEfGhIjKlMnOpQrStUvWxYz"
+#
+# Or add to your shell profile (~/.zshrc, ~/.bashrc):
+# echo 'export TRUENAS_API_KEY="your-api-key-here"' >> ~/.zshrc

@@ -1,9 +1,9 @@
 # TrueNAS SCALE Deployment Summary
 
-**Deployment Date:** {{ ansible_date_time.iso8601 }}
+**Deployment Date:** {{ ansible_date_time.iso8601 | default('Check Mode - ' + lookup('pipe', 'date')) }}
 **Target Host:** {{ inventory_hostname }} ({{ ansible_host }})
 **ZFS Pool:** {{ zfs_pool }}
-**Ansible User:** {{ ansible_user }}
+**Ansible User:** {{ ansible_user | default('localhost') }}
 
 ## Infrastructure Overview
 

@@ -1,6 +1,6 @@
 # TrueNAS SCALE Users and Groups Reference
 # ==========================================
-# Generated: {{ ansible_date_time.iso8601 }}
+# Generated: {{ ansible_date_time.iso8601 | default('Check Mode - ' + lookup('pipe', 'date')) }}
 
 ## Service Groups ({{ service_groups | length }} groups)
 {% for group in service_groups %}

@@ -20,7 +20,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ main_datasets }}"
   register: main_dataset_results
   tags:
@@ -49,7 +49,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ container_datasets }}"
   register: container_dataset_results
   tags:
@@ -78,7 +78,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ app_categories | dict2items | subelements('value') }}"
   register: app_dataset_results
   tags:
@@ -107,7 +107,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ media_subdatasets }}"
   register: media_dataset_results
   tags:
@@ -136,7 +136,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ download_subdatasets }}"
   register: download_dataset_results
   tags:
@@ -165,7 +165,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ database_datasets }}"
   register: database_dataset_results
   tags:
@@ -194,7 +194,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ backup_subdatasets }}"
   register: backup_dataset_results
   tags:
@@ -223,7 +223,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ all_services + system_logs }}"
   register: log_dataset_results
   tags:
@@ -252,7 +252,7 @@
         xattr:
           value: "{{ default_xattr }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ system_datasets }}"
   register: system_dataset_results
   tags:
@@ -273,7 +273,7 @@
         recordsize:
           value: "{{ item.recordsize }}"
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ special_recordsizes }}"
   register: special_recordsize_results
   tags:
@@ -298,7 +298,7 @@
         stripacl: true
         recursive: false
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ app_categories | dict2items | subelements('value') }}"
   register: app_permission_results
   tags:
@@ -323,7 +323,7 @@
         stripacl: true
         recursive: false
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ database_datasets }}"
   when: item.owner is defined and item.group is defined
   register: database_permission_results
@@ -350,7 +350,7 @@
         stripacl: true
         recursive: false
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ media_subdatasets }}"
   register: media_permission_results
   tags:
@@ -376,7 +376,7 @@
         stripacl: true
         recursive: false
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ download_subdatasets }}"
   register: download_permission_results
   tags:
@@ -402,7 +402,7 @@
         stripacl: true
         recursive: false
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ all_services }}"
   register: log_permission_results
   tags:
@@ -428,7 +428,7 @@
         stripacl: true
         recursive: false
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ system_logs }}"
   register: system_log_permission_results
   tags:

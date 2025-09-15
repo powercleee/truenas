@@ -6,9 +6,10 @@
     headers:
       Authorization: "Bearer {{ truenas_api_key }}"
     status_code: [200, 404]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ service_groups }}"
   register: group_check_results
+  check_mode: false  # Always run this task even in check mode
   tags:
     - users
     - groups
@@ -27,9 +28,9 @@
       gid: "{{ item.item.gid }}"
       smb: false
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ group_check_results.results }}"
-  when: item.status == 404 or (item.status == 200 and item.json | length == 0)
+  when: (item.skipped is not defined or not item.skipped) and (item.status == 404 or (item.status == 200 and item.json | length == 0))
   register: group_creation_results
   tags:
     - users
@@ -43,19 +44,30 @@
     headers:
       Authorization: "Bearer {{ truenas_api_key }}"
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ service_groups }}"
   register: final_group_check_results
+  check_mode: false  # Always run this task even in check mode
   tags:
     - users
     - groups
     - api
 
-- name: Build group name to database ID mapping
+- name: Build group name to database ID mapping for existing groups
   set_fact:
     group_id_map: "{{ group_id_map | default({}) | combine({item.item.name: item.json[0].id}) }}"
   loop: "{{ final_group_check_results.results }}"
-  when: item.json | length > 0
+  when: (item.skipped is not defined or not item.skipped) and item.json | length > 0
+  tags:
+    - users
+    - groups
+    - api
+
+- name: Create placeholder group ID mapping for check mode (groups don't exist yet)
+  set_fact:
+    group_id_map: "{{ group_id_map | default({}) | combine({item.name: 'NEW_GROUP_' + item.name.upper()}) }}"
+  loop: "{{ service_groups }}"
+  when: ansible_check_mode and (group_id_map is not defined or item.name not in group_id_map)
   tags:
     - users
     - groups
@@ -81,7 +93,7 @@
       password_disabled: true
       locked: false
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ service_users }}"
   register: user_creation_results
   tags:
@@ -95,19 +107,30 @@
     headers:
       Authorization: "Bearer {{ truenas_api_key }}"
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ (supplementary_groups.download_access + supplementary_groups.media_access + supplementary_groups.container_access + supplementary_groups.monitor_access) | unique }}"
   register: user_lookup_results
+  check_mode: false  # Always run this task even in check mode
   tags:
     - users
     - group_memberships
     - api
 
-- name: Build user name to database ID mapping
+- name: Build user name to database ID mapping for existing users
   set_fact:
     user_id_map: "{{ user_id_map | default({}) | combine({item.item: item.json[0].id}) }}"
   loop: "{{ user_lookup_results.results }}"
-  when: item.json | length > 0
+  when: (item.skipped is not defined or not item.skipped) and item.json | length > 0
+  tags:
+    - users
+    - group_memberships
+    - api
+
+- name: Create placeholder user ID mapping for check mode (users don't exist yet)
+  set_fact:
+    user_id_map: "{{ user_id_map | default({}) | combine({item: 'NEW_USER_' + item.upper()}) }}"
+  loop: "{{ (supplementary_groups.download_access + supplementary_groups.media_access + supplementary_groups.container_access + supplementary_groups.monitor_access) | unique }}"
+  when: ansible_check_mode and (user_id_map is not defined or item not in user_id_map)
   tags:
     - users
     - group_memberships
@@ -124,7 +147,7 @@
     body:
       groups: ["{{ group_id_map[lookup('vars', item + '_primary_group') | default(service_users | selectattr('name', 'equalto', item) | map(attribute='group') | first)] }}", "{{ group_id_map['download'] }}"]
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ supplementary_groups.download_access }}"
   when: user_id_map[item] is defined and group_id_map['download'] is defined
   tags:
@@ -143,7 +166,7 @@
     body:
       groups: ["{{ group_id_map[lookup('vars', item + '_primary_group') | default(service_users | selectattr('name', 'equalto', item) | map(attribute='group') | first)] }}", "{{ group_id_map['media'] }}"]
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ supplementary_groups.media_access }}"
   when: user_id_map[item] is defined and group_id_map['media'] is defined
   tags:
@@ -162,7 +185,7 @@
     body:
       groups: ["{{ group_id_map[lookup('vars', item + '_primary_group') | default(service_users | selectattr('name', 'equalto', item) | map(attribute='group') | first)] }}", "{{ group_id_map['containers'] }}"]
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ supplementary_groups.container_access }}"
   when: user_id_map[item] is defined and group_id_map['containers'] is defined
   tags:
@@ -181,7 +204,7 @@
     body:
       groups: ["{{ group_id_map[lookup('vars', item + '_primary_group') | default(service_users | selectattr('name', 'equalto', item) | map(attribute='group') | first)] }}", "{{ group_id_map['monitor'] }}"]
     status_code: [200]
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ supplementary_groups.monitor_access }}"
   when: user_id_map[item] is defined and group_id_map['monitor'] is defined
   tags:
@@ -194,7 +217,6 @@
     src: users_groups_reference.txt.j2
     dest: /tmp/users_groups_reference.txt
     mode: '0644'
-  delegate_to: localhost
   tags:
     - users
     - documentation
@@ -204,7 +226,6 @@
     src: docker_users.env.j2
     dest: /tmp/docker_users.env
     mode: '0644'
-  delegate_to: localhost
   tags:
     - users
     - documentation

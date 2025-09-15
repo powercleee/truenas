@@ -4,8 +4,8 @@ zfs_pool: tank
 
 # TrueNAS API Configuration
 truenas_api_url: "https://{{ ansible_host }}/api/v2.0"
-truenas_api_key: "{{ vault_truenas_api_key }}"
-truenas_validate_certs: true
+truenas_api_key: "{{ lookup('env', 'TRUENAS_API_KEY') }}"
+truenas_validate_certs: false
 
 # Snapshot configuration method - now using TrueNAS API exclusively
 snapshot_method: truenas_api

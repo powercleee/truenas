@@ -23,7 +23,7 @@
       allow_empty: "{{ item.allow_empty }}"
       enabled: "{{ item.enabled }}"
     status_code: [200, 409]  # 409 = already exists
-    validate_certs: "{{ truenas_validate_certs | default(true) }}"
+    validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ truenas_snapshot_tasks }}"
   register: snapshot_task_results
   tags:
@@ -39,7 +39,6 @@
   loop:
     - { src: cleanup_snapshots.sh.j2, dest: /tmp/cleanup_snapshots.sh, mode: '0755' }
     - { src: snapshot_report.sh.j2, dest: /tmp/snapshot_report.sh, mode: '0755' }
-  delegate_to: localhost
   tags:
     - snapshots
     - scripts

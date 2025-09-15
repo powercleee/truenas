@@ -27,9 +27,9 @@ This Ansible implementation replaces the original bash scripts with a more maint
 
 ### Setup Guides
 
-📋 **[CONTROL_MACHINE_SETUP.md](CONTROL_MACHINE_SETUP.md)** - Install Ansible on your laptop/server  
-📋 **[PRE_BOOTSTRAP_CHECKLIST.md](PRE_BOOTSTRAP_CHECKLIST.md)** - Prepare TrueNAS for automation  
-📋 **[ANSIBLE_USER_SETUP.md](ANSIBLE_USER_SETUP.md)** - Detailed ansible user configuration  
+📋 **[CONTROL_MACHINE_SETUP.md](CONTROL_MACHINE_SETUP.md)** - Install Ansible on your laptop/server
+📋 **[PRE_BOOTSTRAP_CHECKLIST.md](PRE_BOOTSTRAP_CHECKLIST.md)** - Prepare TrueNAS for automation
+📋 **[ANSIBLE_USER_SETUP.md](ANSIBLE_USER_SETUP.md)** - Detailed ansible user configuration
 
 ### Installation
 
@@ -73,7 +73,7 @@ This Ansible implementation replaces the original bash scripts with a more maint
    ```bash
    # Test TrueNAS connectivity and permissions
    ansible-playbook test-connection.yml
-   
+
    # Should show all green checkmarks ✅
    ```
 
@@ -161,7 +161,7 @@ Update `inventories/hosts.yml`:
 all:
   hosts:
     truenas-server:
-      ansible_host: 192.168.1.100        # Your TrueNAS IP
+      ansible_host: 10.0.2.10        # Your TrueNAS IP
       ansible_user: ansible               # Dedicated ansible user (UID: 1500)
       ansible_become: true                # Enable sudo
       ansible_ssh_private_key_file: ~/.ssh/truenas-ansible
