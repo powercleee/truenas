@@ -1,0 +1,30 @@
+---
+galaxy_info:
+  role_name: performance
+  namespace: truenas_scale
+  author: TrueNAS SCALE Infrastructure Team
+  description: Configure performance tunables for TrueNAS SCALE via API
+  company: Self-Hosted Infrastructure
+
+  license: MIT
+
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: TrueNAS SCALE
+      versions:
+        - "25.10"
+
+  galaxy_tags:
+    - truenas
+    - performance
+    - tunables
+    - zfs
+    - sysctl
+    - optimization
+
+dependencies: []
+
+collections:
+  - community.general
+  - ansible.posix

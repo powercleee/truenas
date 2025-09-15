@@ -1,0 +1,77 @@
+---
+- name: SYSCTL Performance Tunables
+  tags:
+    - sysctl
+    - performance
+  block:
+    - name: Get existing SYSCTL tunables
+      uri:
+        url: "{{ truenas_api_url }}/system/sysctl"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        status_code: [200]
+        validate_certs: "{{ truenas_validate_certs }}"
+      register: existing_sysctls
+      check_mode: false
+
+    - name: Delete existing performance SYSCTL tunables
+      uri:
+        url: "{{ truenas_api_url }}/system/sysctl/{{ item.id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        status_code: [200]
+        validate_certs: "{{ truenas_validate_certs }}"
+      loop: "{{ existing_sysctls.json | selectattr('var', 'in', performance_sysctl_tunables | map(attribute='var') | list) | list }}"
+      when:
+        - performance_delete_existing | default(true)
+        - existing_sysctls.json is defined
+        - existing_sysctls.json | length > 0
+      loop_control:
+        label: "{{ item.var }} (ID: {{ item.id }})"
+
+    - name: Create/update SYSCTL performance tunables
+      uri:
+        url: "{{ truenas_api_url }}/system/sysctl"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          var: "{{ item.var }}"
+          value: "{{ item.value }}"
+          enabled: true
+          comment: "{{ item.comment | default('Performance tunable managed by Ansible') }}"
+        status_code: [200, 201]
+        validate_certs: "{{ truenas_validate_certs }}"
+      loop: "{{ performance_sysctl_tunables }}"
+      loop_control:
+        label: "{{ item.var }} = {{ item.value }}"
+      register: sysctl_results
+
+    - name: Display SYSCTL configuration results
+      debug:
+        msg:
+          - "SYSCTL tunables configured: {{ sysctl_results.results | selectattr('status', 'in', [200, 201]) | list | length }}"
+          - "Failed configurations: {{ sysctl_results.results | rejectattr('status', 'in', [200, 201]) | list | length }}"
+
+    - name: Fail if any SYSCTL tunables failed to configure
+      fail:
+        msg: "Failed to configure SYSCTL tunable: {{ item.item.var }} = {{ item.item.value }}"
+      loop: "{{ sysctl_results.results }}"
+      when: item.status not in [200, 201]
+      loop_control:
+        label: "{{ item.item.var }}"
+
+  rescue:
+    - name: Handle SYSCTL configuration errors
+      debug:
+        msg:
+          - "Error configuring SYSCTL tunables:"
+          - "{{ ansible_failed_result.msg | default('Unknown error') }}"
+
+    - name: Re-raise SYSCTL error
+      fail:
+        msg: "SYSCTL tunable configuration failed: {{ ansible_failed_result.msg | default('Unknown error') }}"

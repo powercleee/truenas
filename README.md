@@ -142,6 +142,37 @@ The system uses **TrueNAS API** for native snapshot management with optimized sc
 | **media** | Weekly (Sunday) | 4 weeks | Large media files |
 | **backups** | Weekly (Monday) | 8 weeks | Backup repositories |
 
+## Performance Optimization
+
+The **performance role** configures 80+ system tunables optimized for a 192GB RAM system with 10GbE networking running 61 containerized services:
+
+### Performance Tunable Categories
+
+| Category | Count | Purpose |
+|----------|-------|---------|
+| **SYSCTL tunables** | 37 | Memory management, network optimization, filesystem limits |
+| **ZFS parameters** | 33 | ARC configuration, I/O scheduling, storage optimization |
+| **UDEV rules** | 10 | Hardware-appropriate I/O schedulers, queue settings, block device optimization |
+
+### Key Optimizations
+
+#### Memory Management (192GB System)
+- **ZFS ARC**: 153GB (80% allocation) for optimal caching
+- **Container Memory**: 38GB available for applications
+- **Swap Usage**: Minimized (`vm.swappiness=1`)
+
+#### Network Performance (10GbE)
+- **TCP Buffers**: 128MB max send/receive buffers
+- **Congestion Control**: Google BBR algorithm
+- **Connection Scaling**: 8K max connections, expanded port range
+
+#### Storage Performance
+- **I/O Scheduling**: `mq-deadline` for HDDs, `none` for SSDs/NVMe
+- **Prefetch Optimization**: 64MB distance for sequential workloads
+- **Write Performance**: 8GB dirty data threshold before throttling
+
+**⚠️ Reboot Required**: Performance tunables require a system reboot to take effect.
+
 ## Verification Commands
 
 ```bash
@@ -156,6 +187,14 @@ zfs list -t snapshot
 
 # Check TrueNAS API snapshot tasks
 curl -H "Authorization: Bearer $API_KEY" https://truenas-ip/api/v2.0/pool/snapshottask
+
+# Verify performance tunables (after reboot)
+sysctl vm.swappiness vm.dirty_ratio net.core.rmem_max
+cat /sys/module/zfs/parameters/zfs_arc_max
+find /sys/block -name scheduler -exec grep -H . {} \;
+
+# Check ZFS ARC status
+cat /proc/spl/kstat/zfs/arcstats | grep -E "size|hits|miss"
 ```
 
 ## Docker Compose Integration
@@ -227,7 +266,9 @@ services:
     ├── roles/
     │   ├── users/                             # User management via API
     │   ├── datasets/                          # Dataset creation via API
-    │   └── snapshots/                         # Snapshot configuration via API
+    │   ├── snapshots/                         # Snapshot configuration via API
+    │   ├── security/                          # Security hardening via API
+    │   └── performance/                       # Performance tunables via API
     └── templates/                             # Deployment documentation
 ```
 

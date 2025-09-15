@@ -81,6 +81,13 @@
         - hardening
         - setup
 
+    - role: performance
+      tags:
+        - performance
+        - tunables
+        - optimization
+        - setup
+
   post_tasks:
     - name: Display completion summary
       debug:
@@ -91,6 +98,7 @@
           - "Datasets created: Main datasets, application datasets for all {{ service_users | length }} services"
           - "Snapshots configured: {{ snapshot_method | title }} snapshot management enabled"
           - "Security hardening applied: SSH hardening, network security tunables"
+          - "Performance tunables applied: SYSCTL, ZFS, and block device optimizations configured"
           - ""
           - "Next steps:"
           - "1. Deploy your containerized services using the created users and datasets"
@@ -98,10 +106,12 @@
           - "3. Monitor snapshot operations and adjust retention policies if required"
           - "4. Review generated reference files in /tmp/ (users_groups_reference.txt, docker_users.env)"
           - "5. Review security reports in /tmp/ (ssh_security_report.txt)"
-          - "6. Review performance report in /tmp/ (performance_optimization_report.txt)"
-          - "7. Implement external firewall rules as documented in security reports"
-          - "8. Monitor memory usage between containers and ZFS ARC"
-          - "9. All resources are visible in TrueNAS Web UI"
+          - "6. Review performance report in /tmp/ (truenas_performance_configuration_report.md)"
+          - "7. REBOOT SYSTEM to activate all performance tunables"
+          - "8. Implement external firewall rules as documented in security reports"
+          - "9. Monitor memory usage between containers and ZFS ARC"
+          - "10. Validate performance settings after reboot using verification commands"
+          - "11. All resources are visible in TrueNAS Web UI"
       tags: always
 
     - name: Generate deployment summary
