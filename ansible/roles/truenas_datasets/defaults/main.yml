@@ -11,6 +11,17 @@ truenas_validate_certs: false
 default_compression: LZ4
 default_atime: "OFF"
 
+# Cleanup configuration for renamed/removed services
+# Add entries here when usernames change to automatically cleanup old datasets
+cleanup_old_datasets:
+  - old_name: netdata
+    reason: "Changed to netdata-monitoring to avoid conflict with built-in TrueNAS user (2025-09-15)"
+  - old_name: nut
+    reason: "Changed to network-ups-tools to avoid conflict with built-in TrueNAS user (2025-09-15)"
+  # Future username changes can be added here:
+  # - old_name: old_service_name
+  #   reason: "Reason for the change"
+
 # Main datasets
 main_datasets:
   - { name: "{{ zfs_pool }}/apps", recordsize: "128K" }
@@ -76,11 +87,11 @@ app_categories:
     - librenms
     - uptimekuma
     - gotify
-    - netdata
+    - netdata-monitoring
     - scrutiny
     - telegraf
     - graylog
-    - nut
+    - network-ups-tools
     - speedtest
   containers:
     - portainer
@@ -179,11 +190,11 @@ all_services:
   - librenms
   - uptimekuma
   - gotify
-  - netdata
+  - netdata-monitoring
   - scrutiny
   - telegraf
   - graylog
-  - nut
+  - network-ups-tools
   - speedtest
   - portainer
   - watchtower

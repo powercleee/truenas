@@ -1,4 +1,35 @@
 ---
+# Cleanup old datasets from service renames/removals
+- name: "Remove old app dataset for renamed service"
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/apps/' + item.old_name) | replace('/', '%2F') }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200, 404, 422]  # 404/422 = already deleted or doesn't exist
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ cleanup_old_datasets }}"
+  ignore_errors: true
+  tags:
+    - datasets
+    - cleanup
+    - api
+
+- name: "Remove old log dataset for renamed service"
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/logs/' + item.old_name) | replace('/', '%2F') }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200, 404, 422]  # 404/422 = already deleted or doesn't exist
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ cleanup_old_datasets }}"
+  ignore_errors: true
+  tags:
+    - datasets
+    - cleanup
+    - api
+
 # Main datasets (apps, containers, media, downloads, databases, backups, logs, system)
 - name: Ensure main datasets with properties via TrueNAS API
   include_tasks: ensure_dataset.yml

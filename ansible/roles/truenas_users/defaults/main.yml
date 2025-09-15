@@ -71,11 +71,11 @@ service_users:
   - { name: librenms, uid: 3503, group: monitor, category: Monitoring, description: "LibreNMS" }
   - { name: uptimekuma, uid: 3504, group: monitor, category: Monitoring, description: "Uptime Kuma" }
   - { name: gotify, uid: 3505, group: monitor, category: Monitoring, description: "Gotify Notify" }
-  - { name: netdata, uid: 3506, group: monitor, category: Monitoring, description: "Netdata" }
+  - { name: netdata-monitoring, uid: 3506, group: monitor, category: Monitoring, description: "Netdata" }
   - { name: scrutiny, uid: 3507, group: monitor, category: Monitoring, description: "Scrutiny SMART" }
   - { name: telegraf, uid: 3508, group: monitor, category: Monitoring, description: "Telegraf Agent" }
   - { name: graylog, uid: 3509, group: monitor, category: Monitoring, description: "Graylog Logs" }
-  - { name: nut, uid: 3510, group: monitor, category: Monitoring, description: "Network UPS Tools" }
+  - { name: network-ups-tools, uid: 3510, group: monitor, category: Monitoring, description: "Network UPS Tools" }
   - { name: speedtest, uid: 3511, group: monitor, category: Monitoring, description: "Speedtest Tracker" }
 
   # Container Management Services (2 users)
@@ -132,6 +132,6 @@ supplementary_groups:
     - prometheus
     - grafana
     - telegraf
-    - netdata
+    - netdata-monitoring
     - wazuh
     - crowdsec

@@ -257,6 +257,46 @@ zfs_settings:
     application: "64K"
 ```
 
+## Dataset Cleanup for Service Changes
+
+When you rename or remove services, the playbook can automatically clean up old datasets to prevent confusion and wasted space.
+
+### How to Use Cleanup
+
+1. **Add cleanup entries** to `roles/truenas_datasets/defaults/main.yml`:
+
+```yaml
+cleanup_old_datasets:
+  - old_name: netdata
+    reason: "Changed to netdata-monitoring to avoid conflict with built-in TrueNAS user (2025-09-15)"
+  - old_name: nut
+    reason: "Changed to network-ups-tools to avoid conflict with built-in TrueNAS user (2025-09-15)"
+  # Add future changes here:
+  - old_name: old_service_name
+    reason: "Reason for the change (YYYY-MM-DD)"
+```
+
+2. **Run the playbook** normally - cleanup happens automatically:
+
+```bash
+# Full deployment with cleanup
+ansible-playbook site.yml
+
+# Run only cleanup tasks
+ansible-playbook site.yml --tags cleanup
+
+# Skip cleanup if desired
+ansible-playbook site.yml --skip-tags cleanup
+```
+
+### What Gets Cleaned Up
+
+For each entry in `cleanup_old_datasets`, the playbook will remove:
+- `tank/apps/{old_name}` - Application dataset
+- `tank/logs/{old_name}` - Log dataset
+
+**Note:** Cleanup tasks use `ignore_errors: true` and accept both 200 (deleted) and 404 (doesn't exist) status codes, making them safe to run multiple times.
+
 ## Usage Examples
 
 ### Docker Compose Integration

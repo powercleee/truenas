@@ -85,14 +85,14 @@
       username: "{{ item.name }}"
       uid: "{{ item.uid }}"
       group: "{{ group_id_map[item.group] }}"
-      home: "/nonexistent"
+      home: "/var/empty"
       shell: "/usr/sbin/nologin"
       full_name: "{{ item.description }}"
       home_create: false
       smb: false
       password_disabled: true
       locked: false
-    status_code: [200, 409]  # 409 = already exists
+    status_code: [200, 409, 422]  # 409/422 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ service_users }}"
   register: user_creation_results
