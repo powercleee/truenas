@@ -57,33 +57,26 @@ The following ZFS datasets were created with optimized record sizes:
 
 ### Snapshot Configuration
 
-**Method:** {{ snapshot_method | title }}
+**Method:** TrueNAS API
 
-{% if snapshot_method == 'sanoid' %}
-**Sanoid Templates Applied:**
-{% for template_name, template_config in sanoid_templates.items() %}
-- **{{ template_name }}**: {{ template_config.daily }} daily, {{ template_config.monthly }} monthly snapshots
+**Snapshot Schedule Overview:**
+{% for task in truenas_snapshot_tasks %}
+- **{{ task.name }}** (`{{ task.dataset }}`): {{ task.schedule.minute }} {{ task.schedule.hour }} * * {{ task.schedule.dow }} → {{ task.lifetime_value }} {{ task.lifetime_unit | lower }}{% if task.lifetime_unit == 'HOUR' %}s{% endif %} retention
 {% endfor %}
 
-**Dataset Snapshot Policies:**
-{% for dataset, config in sanoid_datasets.items() %}
-- `{{ dataset }}` → {{ config.use_template }} template
-{% endfor %}
-{% endif %}
+**Schedule Design:**
+- **High-frequency**: Critical databases (15 min) and downloads (6 hours)
+- **Daily**: Apps, containers, logs, system (staggered 1-4 AM)
+- **Weekly**: Media and backups (weekend schedule)
+- **Retention**: Optimized by data criticality and change frequency
 
 ### File Locations
 
 - **User/Group Reference:** `/root/users_groups_reference.txt`
 - **Docker Environment File:** `/root/docker_users.env`
 - **Deployment Summary:** `/root/truenas_deployment_summary.md` (this file)
-{% if snapshot_method == 'sanoid' %}
-- **Sanoid Config:** `/etc/sanoid/sanoid.conf`
-- **Sanoid Logs:** `{{ sanoid_log_dir }}/`
-- **Cleanup Script:** `/usr/local/bin/cleanup_snapshots.sh`
-- **Report Script:** `/usr/local/bin/snapshot_report.sh`
-{% elif snapshot_method == 'truenas_api' %}
-- **Snapshot Tasks JSON:** `/tmp/snapshot_tasks.json`
-{% endif %}
+- **Cleanup Script:** `/tmp/cleanup_snapshots.sh`
+- **Report Script:** `/tmp/snapshot_report.sh`
 
 ## Usage Examples
 
@@ -167,15 +160,13 @@ spec:
 ### Snapshot Operations
 ```bash
 # View snapshot report
-/usr/local/bin/snapshot_report.sh
+/tmp/snapshot_report.sh
 
-{% if snapshot_method == 'sanoid' %}
-# Manual snapshot creation
-sanoid --take-snapshots
+# Manual snapshot creation via TrueNAS API
+midclt call pool.snapshottask.run
 
 # Manual cleanup
-/usr/local/bin/cleanup_snapshots.sh
-{% endif %}
+/tmp/cleanup_snapshots.sh
 
 # List all snapshots
 zfs list -t snapshot | head -20

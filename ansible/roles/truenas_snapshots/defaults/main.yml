@@ -30,9 +30,6 @@ truenas_snapshot_tasks:
   - name: "Important-Apps"
     dataset: "{{ zfs_pool }}/apps"
     recursive: false
-    exclude:
-      - "{{ zfs_pool }}/apps/plex/transcode"
-      - "{{ zfs_pool }}/apps/*/cache"
     schedule:
       minute: "0"
       hour: "*/4"
@@ -56,7 +53,7 @@ truenas_snapshot_tasks:
       dow: "0"
     lifetime_value: 4
     lifetime_unit: "WEEK"
-    naming_schema: "media-%Y%m%d"
+    naming_schema: "media-%Y%m%d-%H%M"
     allow_empty: true
     enabled: true
 
@@ -71,7 +68,7 @@ truenas_snapshot_tasks:
       dow: "*"
     lifetime_value: 7
     lifetime_unit: "DAY"
-    naming_schema: "logs-%Y%m%d"
+    naming_schema: "logs-%Y%m%d-%H%M"
     allow_empty: true
     enabled: true
 
@@ -86,109 +83,61 @@ truenas_snapshot_tasks:
       dow: "*"
     lifetime_value: 30
     lifetime_unit: "DAY"
-    naming_schema: "system-%Y%m%d"
+    naming_schema: "system-%Y%m%d-%H%M"
     allow_empty: false
     enabled: true
 
-# Sanoid configuration for advanced snapshot management
-sanoid_datasets:
-  # Critical databases - frequent snapshots
-  "{{ zfs_pool }}/databases":
-    use_template: "critical"
+  - name: "Containers-Daily"
+    dataset: "{{ zfs_pool }}/containers"
     recursive: true
-    process_children_only: false
+    schedule:
+      minute: "0"
+      hour: "4"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 7
+    lifetime_unit: "DAY"
+    naming_schema: "containers-%Y%m%d-%H%M"
+    allow_empty: true
+    enabled: true
 
-  # Important applications - regular snapshots
-  "{{ zfs_pool }}/apps":
-    use_template: "apps"
+  - name: "Downloads-Quick"
+    dataset: "{{ zfs_pool }}/downloads"
     recursive: true
-    process_children_only: false
+    schedule:
+      minute: "0"
+      hour: "*/6"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 3
+    lifetime_unit: "DAY"
+    naming_schema: "downloads-%Y%m%d-%H%M"
+    allow_empty: true
+    enabled: true
 
-  # Media content - less frequent snapshots
-  "{{ zfs_pool }}/media":
-    use_template: "media"
+  - name: "Backups-Weekly"
+    dataset: "{{ zfs_pool }}/backups"
     recursive: true
-    process_children_only: false
+    schedule:
+      minute: "0"
+      hour: "5"
+      dom: "*"
+      month: "*"
+      dow: "1"
+    lifetime_value: 8
+    lifetime_unit: "WEEK"
+    naming_schema: "backups-%Y%m%d-%H%M"
+    allow_empty: true
+    enabled: true
 
-  # Logs - daily snapshots
-  "{{ zfs_pool }}/logs":
-    use_template: "logs"
-    recursive: true
-    process_children_only: false
-
-  # System configuration - important but not as frequent
-  "{{ zfs_pool }}/system":
-    use_template: "system"
-    recursive: true
-    process_children_only: false
-
-  # Downloads - minimal retention
-  "{{ zfs_pool }}/downloads":
-    use_template: "downloads"
-    recursive: true
-    process_children_only: false
-
-# Sanoid templates
-sanoid_templates:
-  critical:
-    frequently: 4
-    hourly: 24
-    daily: 30
-    monthly: 3
-    yearly: 0
-    autosnap: true
-    autoprune: true
-
-  apps:
-    frequently: 0
-    hourly: 6
-    daily: 7
-    monthly: 1
-    yearly: 0
-    autosnap: true
-    autoprune: true
-
-  media:
-    frequently: 0
-    hourly: 0
-    daily: 3
-    weekly: 4
-    monthly: 2
-    yearly: 0
-    autosnap: true
-    autoprune: true
-
-  logs:
-    frequently: 0
-    hourly: 0
-    daily: 7
-    weekly: 0
-    monthly: 0
-    yearly: 0
-    autosnap: true
-    autoprune: true
-
-  system:
-    frequently: 0
-    hourly: 0
-    daily: 30
-    weekly: 4
-    monthly: 6
-    yearly: 1
-    autosnap: true
-    autoprune: true
-
-  downloads:
-    frequently: 0
-    hourly: 0
-    daily: 3
-    weekly: 0
-    monthly: 0
-    yearly: 0
-    autosnap: true
-    autoprune: true
-
-# Sanoid configuration
-sanoid_cron_minute: "*/15"
-sanoid_log_level: "info"
-sanoid_log_dir: "/var/log/sanoid"
+# Complete snapshot coverage for all main datasets via TrueNAS API:
+# - databases: Every 15 minutes, 24 hour retention (critical data)
+# - apps: Every 4 hours, 7 day retention (application data)
+# - media: Weekly on Sunday, 4 week retention (large media files)
+# - logs: Daily at 2 AM, 7 day retention (log files)
+# - system: Daily at 1 AM, 30 day retention (system config)
+# - containers: Daily at 4 AM, 7 day retention (container runtime)
+# - downloads: Every 6 hours, 3 day retention (temporary downloads)
+# - backups: Weekly on Monday, 8 week retention (backup data)

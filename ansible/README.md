@@ -208,25 +208,20 @@ all:
       zfs_pool: tank                      # Your ZFS pool name
 ```
 
-### Snapshot Methods
+### Snapshot Management
 
-Choose your preferred snapshot method in `group_vars/all.yml`:
+This deployment uses **TrueNAS API** for native snapshot management:
 
-#### Option 1: Sanoid (Recommended)
-```yaml
-snapshot_method: sanoid
-```
-- Advanced snapshot management with flexible retention policies
-- Automated pruning and monitoring
-- Cross-platform ZFS snapshot tool
-
-#### Option 2: TrueNAS API Integration
 ```yaml
 snapshot_method: truenas_api
 ```
-- Native TrueNAS SCALE integration
-- Generates configuration for manual import
-- Requires TrueNAS Web UI or API setup
+
+**Features:**
+- Native TrueNAS SCALE integration via API
+- Automated snapshot task creation
+- Complete coverage of all main datasets
+- Configurable retention policies per dataset type
+- Management through TrueNAS Web UI
 
 ### Customization
 
@@ -411,8 +406,8 @@ ansible truenas -m shell -a "zfs get recordsize,compression tank/apps/grafana"
 
 #### Snapshot Issues
 ```bash
-# Check sanoid status (if using sanoid method)
-ansible truenas -m shell -a "systemctl status sanoid.timer"
+# Check TrueNAS snapshot tasks status
+ansible truenas -m shell -a "midclt call pool.snapshottask.query"
 ```
 
 ## Security Considerations
@@ -436,21 +431,33 @@ After deployment, check `/root/` on your TrueNAS system for:
 
 ### Log Locations
 
-- Sanoid logs: `/var/log/sanoid/`
+- TrueNAS logs: `/var/log/middlewared.log`
 - Service logs: `/mnt/tank/logs/{service}/`
 - Deployment logs: Check Ansible output
 
 ## Backup Strategy
 
-The configured snapshot system provides:
+The TrueNAS API snapshot system provides complete coverage with optimized schedules:
 
-- **Critical Data**: 15-minute snapshots, 24-hour retention
-- **Application Data**: 4-hour snapshots, 7-day retention
-- **Media Content**: Weekly snapshots, 4-week retention
-- **Log Data**: Daily snapshots, 7-day retention
+| Dataset | Frequency | Retention | Schedule | Purpose |
+|---------|-----------|-----------|----------|---------|
+| **databases** | Every 15 minutes | 24 hours | `*/15 * * * *` | Critical data protection |
+| **apps** | Every 4 hours | 7 days | `0 */4 * * *` | Application data backup |
+| **containers** | Daily | 7 days | `0 4 * * *` | Container runtime data |
+| **downloads** | Every 6 hours | 3 days | `0 */6 * * *` | Temporary download staging |
+| **logs** | Daily | 7 days | `0 2 * * *` | System and application logs |
+| **system** | Daily | 30 days | `0 1 * * *` | System configuration |
+| **media** | Weekly (Sunday) | 4 weeks | `0 3 * * 0` | Large media files |
+| **backups** | Weekly (Monday) | 8 weeks | `0 5 * * 1` | Backup repositories |
+
+**Schedule Design:**
+- **High-frequency**: Critical databases (15 min) and downloads (6 hours)
+- **Daily**: Apps, containers, logs, system (staggered 1-4 AM)
+- **Weekly**: Media and backups (weekend schedule)
+- **Retention**: Optimized by data criticality and change frequency
 
 For disaster recovery, implement:
-1. Off-site replication using `syncoid`
+1. Off-site replication using ZFS send/receive
 2. Configuration backups to external storage
 3. Regular restore testing
 
@@ -504,7 +511,7 @@ ansible truenas -m shell -a "getent passwd | grep 30[0-9][0-9]"
 ansible truenas -m shell -a "ls -la /mnt/tank/apps/ | head -10"
 
 # After Phase 4 - Check snapshot tasks
-ansible truenas -m shell -a "cat /etc/cron.d/sanoid 2>/dev/null || echo 'TrueNAS native snapshots configured'"
+ansible truenas -m shell -a "midclt call pool.snapshottask.query | jq '.[] | {name, dataset, enabled}'"
 ```
 
 See [README_API_MIGRATION.md](README_API_MIGRATION.md) for detailed technical information about the API integration and dependency resolution.

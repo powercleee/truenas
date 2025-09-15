@@ -48,9 +48,9 @@ show_snapshot_summary() {
     fi
 }
 
-# Show summaries for all managed datasets
-{% for dataset, config in sanoid_datasets.items() %}
-show_snapshot_summary "{{ dataset }}" "{{ dataset | replace(zfs_pool + '/', '') | title }} Dataset"
+# Show summaries for all TrueNAS API managed datasets
+{% for task in truenas_snapshot_tasks %}
+show_snapshot_summary "{{ task.dataset }}" "{{ task.name }} ({{ task.dataset | replace(zfs_pool + '/', '') | title }})"
 {% endfor %}
 
 echo

@@ -18,7 +18,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_section() { echo -e "${BLUE}=== $1 ===${NC}"; }
 
 # Log to file
-LOG_FILE="{{ sanoid_log_dir }}/cleanup_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="/var/log/cleanup_snapshots_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 log_section "Starting ZFS Snapshot Cleanup"
@@ -45,9 +45,15 @@ cleanup_old_snapshots() {
     done
 }
 
-# Cleanup functions for different dataset types
-{% for dataset, config in sanoid_datasets.items() %}
-cleanup_old_snapshots "{{ dataset }}" {{ sanoid_templates[config.use_template].daily | default(7) }}
+# Cleanup functions for TrueNAS API managed datasets
+{% for task in truenas_snapshot_tasks %}
+{% if task.lifetime_unit == 'DAY' %}
+cleanup_old_snapshots "{{ task.dataset }}" {{ task.lifetime_value }}
+{% elif task.lifetime_unit == 'HOUR' %}
+cleanup_old_snapshots "{{ task.dataset }}" {{ (task.lifetime_value / 24) | round(1) }}
+{% elif task.lifetime_unit == 'WEEK' %}
+cleanup_old_snapshots "{{ task.dataset }}" {{ task.lifetime_value * 7 }}
+{% endif %}
 {% endfor %}
 
 log_section "Snapshot Cleanup Complete"
