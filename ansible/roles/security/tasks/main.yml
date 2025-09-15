@@ -1,7 +1,7 @@
 ---
 - name: Get current SSH service configuration
   uri:
-    url: "{{ truenas_api_url }}/service/id/ssh"
+    url: "{{ truenas_api_url }}/ssh"
     method: GET
     headers:
       Authorization: "Bearer {{ truenas_api_key }}"
@@ -16,11 +16,11 @@
   debug:
     msg:
       - "Current SSH Configuration:"
-      - "TCP Port: {{ current_ssh_config.json.config.tcpport }}"
-      - "Root Login: {{ current_ssh_config.json.config.rootlogin }}"
-      - "Password Auth: {{ current_ssh_config.json.config.passwordauth }}"
-      - "Compression: {{ current_ssh_config.json.config.compression }}"
-      - "Service Enabled: {{ current_ssh_config.json.enable }}"
+      - "TCP Port: {{ current_ssh_config.json.tcpport }}"
+      - "Password Auth: {{ current_ssh_config.json.passwordauth }}"
+      - "Kerberos Auth: {{ current_ssh_config.json.kerberosauth }}"
+      - "TCP Forwarding: {{ current_ssh_config.json.tcpfwd }}"
+      - "Compression: {{ current_ssh_config.json.compression }}"
   tags:
     - security
     - ssh
@@ -28,28 +28,43 @@
 
 - name: Apply SSH hardening configuration
   uri:
-    url: "{{ truenas_api_url }}/service/id/ssh"
+    url: "{{ truenas_api_url }}/ssh"
     method: PUT
     headers:
       Authorization: "Bearer {{ truenas_api_key }}"
       Content-Type: "application/json"
     body_format: json
     body:
-      config:
-        tcpport: "{{ ssh_port }}"
-        rootlogin: "{{ ssh_allow_root }}"
-        passwordauth: "{{ ssh_password_auth }}"
-        kerberosauth: "{{ ssh_kerberos_auth }}"
-        tcpfwd: "{{ ssh_tcp_forwarding }}"
-        compression: "{{ ssh_compression }}"
-        weak_ciphers: "{{ ssh_weak_ciphers }}"
-        sftp_log_level: "{{ ssh_sftp_log_level }}"
-        sftp_log_facility: "{{ ssh_sftp_log_facility }}"
-        options: "{{ ssh_additional_options }}"
-      enable: "{{ ssh_service_enabled }}"
+      tcpport: "{{ ssh_port }}"
+      passwordauth: "{{ ssh_password_auth }}"
+      kerberosauth: "{{ ssh_kerberos_auth }}"
+      tcpfwd: "{{ ssh_tcp_forwarding }}"
+      compression: "{{ ssh_compression }}"
+      weak_ciphers: "{{ ssh_weak_ciphers }}"
+      sftp_log_level: "{{ ssh_sftp_log_level }}"
+      sftp_log_facility: "{{ ssh_sftp_log_facility }}"
+      options: "{{ ssh_additional_options }}"
     status_code: [200]
     validate_certs: "{{ truenas_validate_certs }}"
   register: ssh_config_result
+  when: apply_ssh_hardening | default(true)
+  tags:
+    - security
+    - ssh
+    - api
+
+- name: Enable/Disable SSH service
+  uri:
+    url: "{{ truenas_api_url }}/service/id/11"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      enable: "{{ ssh_service_enabled }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
   when: apply_ssh_hardening | default(true)
   tags:
     - security

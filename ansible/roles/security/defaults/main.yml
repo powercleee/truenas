@@ -19,7 +19,7 @@ ssh_password_auth: false  # Security best practice: use key-based auth only
 ssh_kerberos_auth: false
 ssh_tcp_forwarding: false  # Disable TCP forwarding for security
 ssh_compression: false  # Disable compression to prevent attacks
-ssh_weak_ciphers: false  # Disable weak ciphers for better security
+ssh_weak_ciphers: []  # List of weak ciphers to allow (empty for security)
 ssh_sftp_log_level: "ERROR"
 ssh_sftp_log_facility: "AUTH"
 

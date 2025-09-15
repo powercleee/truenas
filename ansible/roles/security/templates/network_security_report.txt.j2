@@ -1,7 +1,7 @@
 TrueNAS Network Security Configuration Report
 ======================================================
 
-Generated: {{ ansible_date_time.iso8601 }}
+Generated: {{ ansible_date_time.iso8601 | default(ansible_date_time) | default(lookup('pipe', 'date -Iseconds')) }}
 TrueNAS Host: {{ ansible_host }}
 Configured by: Ansible security role
 
