@@ -134,9 +134,9 @@ The solution separates dataset creation from permission assignment, allowing pro
 
 ```
 ansible/
-├── ansible.cfg                    # Ansible configuration
+├── ansible.cfg                   # Ansible configuration
 ├── site.yml                      # Main playbook
-├── requirements.yml               # Collection dependencies
+├── requirements.yml              # Collection dependencies
 ├── inventories/
 │   └── hosts.yml                 # Inventory configuration
 ├── group_vars/
@@ -145,9 +145,9 @@ ansible/
 ├── host_vars/
 │   └── truenas-server.yml        # Host-specific configuration
 ├── roles/
-│   ├── truenas_users/            # User and group management
-│   ├── truenas_datasets/         # ZFS dataset creation
-│   └── truenas_snapshots/        # Snapshot configuration
+│   ├── users/                    # User and group management
+│   ├── datasets/                 # ZFS dataset creation
+│   └── snapshots/                # Snapshot configuration
 └── templates/
     └── deployment_summary.md.j2  # Deployment documentation
 ```

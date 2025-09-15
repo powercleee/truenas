@@ -58,18 +58,18 @@
       tags: always
 
   roles:
-    - role: truenas_users
+    - role: users
       tags:
         - users
         - setup
 
-    - role: truenas_datasets
+    - role: datasets
       tags:
         - datasets
         - zfs
         - setup
 
-    - role: truenas_snapshots
+    - role: snapshots
       tags:
         - snapshots
         - backup

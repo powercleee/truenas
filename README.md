@@ -222,12 +222,12 @@ services:
 │   └── snapshot_config_refined.sh              # Snapshot configuration (519 lines)
 └── ansible/
     ├── site.yml                               # Main Ansible playbook
-    ├── inventories/hosts.yml                   # Inventory configuration
+    ├── inventories/hosts.yml                  # Inventory configuration
     ├── group_vars/                            # Global variables
     ├── roles/
-    │   ├── truenas_users/                     # User management via API
-    │   ├── truenas_datasets/                  # Dataset creation via API
-    │   └── truenas_snapshots/                 # Snapshot configuration via API
+    │   ├── users/                             # User management via API
+    │   ├── datasets/                          # Dataset creation via API
+    │   └── snapshots/                         # Snapshot configuration via API
     └── templates/                             # Deployment documentation
 ```
 
