@@ -1,0 +1,140 @@
+---
+- name: Get current network security tunables
+  uri:
+    url: "{{ truenas_api_url }}/tunable"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: current_tunables
+  tags:
+    - security
+    - network
+    - hardening
+    - api
+
+- name: Display existing network security tunables
+  debug:
+    msg: "Found {{ current_tunables.json | selectattr('var', 'match', 'net\\.(ipv4|ipv6)\\.(tcp_syncookies|icmp_|ip_forward|conf\\.).*') | list | length }} existing network security tunables"
+  tags:
+    - security
+    - network
+    - hardening
+    - debug
+
+- name: Create network security hardening tunables
+  uri:
+    url: "{{ truenas_api_url }}/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "{{ item.key }}"
+      value: "{{ item.value }}"
+      type: "SYSCTL"
+      comment: "Network security hardening - {{ item.key }} - managed by Ansible"
+      enabled: true
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ network_security_tunables | dict2items }}"
+  when:
+    - apply_network_hardening | default(true)
+    - item.key not in (current_tunables.json | selectattr('var', 'defined') | map(attribute='var') | list)
+  register: security_tunable_creation_results
+  tags:
+    - security
+    - network
+    - hardening
+    - api
+
+- name: Update existing network security tunables if values differ
+  uri:
+    url: "{{ truenas_api_url }}/tunable/id/{{ existing_tunable.id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "{{ item.key }}"
+      value: "{{ item.value }}"
+      type: "SYSCTL"
+      comment: "Network security hardening - {{ item.key }} - managed by Ansible (updated)"
+      enabled: true
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ network_security_tunables | dict2items }}"
+  vars:
+    existing_tunable: "{{ current_tunables.json | selectattr('var', 'equalto', item.key) | first | default({}) }}"
+  when:
+    - apply_network_hardening | default(true)
+    - existing_tunable.id is defined
+    - existing_tunable.value != item.value or not existing_tunable.enabled
+  register: security_tunable_update_results
+  tags:
+    - security
+    - network
+    - hardening
+    - api
+
+- name: Apply network security tunables immediately (reload sysctl)
+  uri:
+    url: "{{ truenas_api_url }}/tunable/load"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: {}
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  when:
+    - apply_network_hardening | default(true)
+    - (security_tunable_creation_results is changed) or (security_tunable_update_results is changed)
+  tags:
+    - security
+    - network
+    - hardening
+    - api
+
+- name: Verify network security settings are active
+  uri:
+    url: "{{ truenas_api_url }}/tunable"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: final_security_tunables
+  tags:
+    - security
+    - network
+    - hardening
+    - verification
+
+- name: Display network security hardening results
+  debug:
+    msg:
+      - "Network Security Hardening Applied:"
+      - "Tunables Created: {{ (security_tunable_creation_results.results | default([]) | selectattr('changed', 'equalto', true) | list | length) }}"
+      - "Tunables Updated: {{ (security_tunable_update_results.results | default([]) | selectattr('changed', 'equalto', true) | list | length) }}"
+      - "Total Security Tunables: {{ final_security_tunables.json | selectattr('var', 'match', 'net\\.(ipv4|ipv6)\\.(tcp_syncookies|icmp_|ip_forward|conf\\.).*') | list | length }}"
+      - ""
+      - "✅ Network hardening configured via TrueNAS API"
+      - "✅ Settings visible in System → Advanced → Sysctl"
+      - "✅ Persistent across reboots and updates"
+      - ""
+      - "Security Features Enabled:"
+      - "- SYN flood protection (tcp_syncookies)"
+      - "- ICMP broadcast/bogus response filtering"
+      - "- IP forwarding disabled"
+      - "- Source routing disabled"
+      - "- ICMP redirects disabled"
+      - "- Martian packet logging enabled"
+      - "- IPv6 security hardening"
+  tags:
+    - security
+    - network
+    - hardening
+    - summary

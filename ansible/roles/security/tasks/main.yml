@@ -92,16 +92,14 @@
     - api
 
 
-- name: Generate SSH security report
-  template:
-    src: ssh_security_report.txt.j2
-    dest: /tmp/ssh_security_report.txt
-    mode: '0644'
+- name: Apply network security hardening
+  include_tasks: network_hardening.yml
+  when: apply_network_hardening | default(true)
   tags:
     - security
-    - ssh
-    - reports
-
+    - network
+    - hardening
+    - api
 
 - name: Generate SSH security report
   template:
@@ -121,21 +119,26 @@
       - "SSH Port: {{ ssh_port }}"
       - "SSH Root Login: {{ 'Disabled' if not ssh_allow_root else 'Enabled' }}"
       - "SSH Password Auth: {{ 'Disabled' if not ssh_password_auth else 'Enabled' }}"
+      - "Network Security Hardening: {{ 'Applied' if apply_network_hardening else 'Skipped' }}"
       - ""
       - "API-Managed Settings:"
       - "- SSH Service: {{ truenas_api_url }}/service/id/ssh"
+      - "- Network Security Tunables: {{ truenas_api_url }}/tunable"
       - ""
       - "Security Reports Generated:"
       - "- SSH Security: /tmp/ssh_security_report.txt"
       - ""
       - "Web UI Management:"
       - "- SSH Config: Services → SSH"
+      - "- Network Security: System → Advanced → Sysctl"
       - ""
       - "✅ All configurations managed through TrueNAS middleware API"
       - "✅ Settings visible and editable in TrueNAS Web UI"
       - "✅ Persistent across reboots and system updates"
       - ""
-      - "⚠️  Note: Firewall management requires external tools."
+      - "⚠️  Note: Network security hardening applied via sysctl. Performance tuning"
+      - "   (TCP buffers, ZFS ARC, etc.) is handled by the 'performance' role."
+      - "   Firewall management requires external tools."
   tags:
     - security
     - summary

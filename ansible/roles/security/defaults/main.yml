@@ -6,6 +6,7 @@ truenas_validate_certs: false
 
 # Security Configuration Control Flags
 apply_ssh_hardening: true
+apply_network_hardening: true
 
 # SSH Hardening Configuration
 ssh_service_enabled: true
@@ -45,17 +46,27 @@ ssh_additional_options: |
   KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
 
 
-# Network Security Settings
-network_security:
-  # TCP/IP stack hardening (applied via sysctl - not through TrueNAS API)
-  tcp_syncookies: true
-  icmp_ignore_bogus_error_responses: true
-  icmp_ignore_broadcasts: true
-  ip_forward: false  # Disable IP forwarding unless needed
-  accept_source_route: false
-  accept_redirects: false
-  send_redirects: false
-  log_martians: true
+# Network Security Hardening Tunables (via TrueNAS API)
+network_security_tunables:
+  # TCP/IP stack hardening
+  "net.ipv4.tcp_syncookies": "1"                    # Enable SYN flood protection
+  "net.ipv4.icmp_ignore_bogus_error_responses": "1" # Ignore bogus ICMP error responses
+  "net.ipv4.icmp_echo_ignore_broadcasts": "1"       # Ignore ICMP ping broadcasts
+  "net.ipv4.ip_forward": "0"                        # Disable IP forwarding (security)
+  "net.ipv4.conf.all.accept_source_route": "0"      # Disable source routing
+  "net.ipv4.conf.default.accept_source_route": "0"  # Disable source routing (default)
+  "net.ipv4.conf.all.accept_redirects": "0"         # Disable ICMP redirects
+  "net.ipv4.conf.default.accept_redirects": "0"     # Disable ICMP redirects (default)
+  "net.ipv4.conf.all.send_redirects": "0"           # Disable sending ICMP redirects
+  "net.ipv4.conf.default.send_redirects": "0"       # Disable sending ICMP redirects (default)
+  "net.ipv4.conf.all.log_martians": "1"             # Log martian packets
+  "net.ipv4.conf.default.log_martians": "1"         # Log martian packets (default)
+
+  # Additional IPv6 hardening
+  "net.ipv6.conf.all.accept_redirects": "0"         # Disable IPv6 ICMP redirects
+  "net.ipv6.conf.default.accept_redirects": "0"     # Disable IPv6 ICMP redirects (default)
+  "net.ipv6.conf.all.accept_source_route": "0"      # Disable IPv6 source routing
+  "net.ipv6.conf.default.accept_source_route": "0"  # Disable IPv6 source routing (default)
 
 # Service Binding Configuration (Security through service isolation)
 service_bindings:
