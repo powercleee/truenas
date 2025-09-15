@@ -443,7 +443,7 @@
       - "Dataset creation completed via TrueNAS API"
       - "Main datasets: {{ main_datasets | length }}"
       - "Container datasets: {{ container_datasets | length }}"
-      - "Application datasets: {{ app_categories | dict2items | sumelements('value') | length }}"
+      - "Application datasets: {{ app_categories | dict2items | subelements('value') | length }}"
       - "Media datasets: {{ media_subdatasets | length }}"
       - "Download datasets: {{ download_subdatasets | length }}"
       - "Database datasets: {{ database_datasets | length }}"
