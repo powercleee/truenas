@@ -113,15 +113,6 @@
     - ssh
     - reports
 
-- name: Generate network security report
-  template:
-    src: network_security_report.txt.j2
-    dest: /tmp/network_security_report.txt
-    mode: '0644'
-  tags:
-    - security
-    - network
-    - reports
 
 - name: Display security configuration summary
   debug:
@@ -136,7 +127,6 @@
       - ""
       - "Security Reports Generated:"
       - "- SSH Security: /tmp/ssh_security_report.txt"
-      - "- Network Security: /tmp/network_security_report.txt"
       - ""
       - "Web UI Management:"
       - "- SSH Config: Services → SSH"

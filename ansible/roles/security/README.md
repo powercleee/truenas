@@ -97,9 +97,6 @@ The role generates security reports in `/tmp/`:
   - Security recommendations
   - Connection testing instructions
 
-- **Network Security Report**: `/tmp/network_security_report.txt`
-  - Firewall rule recommendations
-  - Security hardening checklist
 
 ## Security Best Practices Implemented
 
