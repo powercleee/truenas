@@ -1,0 +1,155 @@
+TrueNAS Network Security Configuration Report
+==============================================
+
+Generated: {{ ansible_date_time.iso8601 }}
+TrueNAS Host: {{ ansible_host }}
+Configured by: Ansible security role
+
+NETWORK INTERFACES CONFIGURATION
+--------------------------------
+{% for interface in network_interfaces %}
+Interface: {{ interface.name }}
+  Description: {{ interface.description | default('Not configured') }}
+  MTU: {{ interface.mtu | default(1500) }}
+{% endfor %}
+
+AVAILABLE NETWORK INTERFACES
+----------------------------
+{% if current_interfaces is defined %}
+{% for interface in current_interfaces.json %}
+{{ interface.name }}:
+  Type: {{ interface.type }}
+  State: {{ interface.state }}
+  {% if interface.aliases %}
+  IP Addresses:
+    {% for alias in interface.aliases %}
+    - {{ alias.address }}/{{ alias.netmask }}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+{% else %}
+Run with -v to see detailed interface information
+{% endif %}
+
+SERVICE BINDING SECURITY
+------------------------
+SSH Service Binding:
+{% if service_bindings.ssh.interfaces %}
+  Restricted to interfaces: {{ service_bindings.ssh.interfaces | join(', ') }}
+  Security Level: HIGH (Interface-restricted)
+{% else %}
+  Bound to all interfaces: ALL
+  Security Level: MEDIUM (Consider restricting to management networks)
+{% endif %}
+
+NFS Service Binding:
+{% if service_bindings.nfs.interfaces %}
+  Restricted to interfaces: {{ service_bindings.nfs.interfaces | join(', ') }}
+{% else %}
+  Bound to all interfaces (if NFS enabled)
+{% endif %}
+
+SMB Service Binding:
+{% if service_bindings.smb.interfaces %}
+  Restricted to interfaces: {{ service_bindings.smb.interfaces | join(', ') }}
+{% else %}
+  Bound to all interfaces (if SMB enabled)
+{% endif %}
+
+NETWORK SECURITY RECOMMENDATIONS
+--------------------------------
+✅ Network interfaces configured with appropriate MTU settings
+{% if network_interfaces | length > 0 %}✅ {{ network_interfaces | length }} network interface(s) optimized{% else %}❌ No network interfaces configured for optimization{% endif %}
+
+FIREWALL CONFIGURATION NEEDED
+-----------------------------
+⚠️  IMPORTANT: TrueNAS SCALE does not provide native firewall API endpoints.
+Implement the following rules in your external firewall solution:
+
+RECOMMENDED FIREWALL RULES
+--------------------------
+Default Policy: {{ firewall_rules.default_policy }}
+
+Allowed Services:
+{% for service in firewall_rules.allowed_services %}
+- {{ service.name }}: Port {{ service.port }}/{{ service.protocol }} from {{ service.source }}
+{% endfor %}
+
+Blocked Ports (Security Risk):
+{% for port in firewall_rules.blocked_ports %}
+- Port {{ port }} (Block unless specifically needed)
+{% endfor %}
+
+NETWORK HARDENING CHECKLIST
+---------------------------
+□ Configure external firewall with recommended rules
+□ Implement network segmentation
+□ Use VLANs to isolate TrueNAS management traffic
+□ Enable network monitoring and logging
+□ Implement intrusion detection systems
+□ Regular network security audits
+□ Monitor bandwidth usage for anomalies
+
+TCP/IP STACK HARDENING
+----------------------
+Recommended sysctl settings (implement via system configuration):
+{% for setting, value in network_security.items() %}
+net.ipv4.{{ setting }}: {{ value | lower }}
+{% endfor %}
+
+TLS/SSL SECURITY
+---------------
+Minimum TLS Version: {{ tls_security.min_tls_version }}
+Recommended Cipher Suites:
+{% for cipher in tls_security.cipher_suites %}
+- {{ cipher }}
+{% endfor %}
+
+MONITORING AND ALERTING
+----------------------
+Security Monitoring Configuration:
+- Log Failed Logins: {{ security_monitoring.log_failed_logins }}
+- Log Privilege Escalation: {{ security_monitoring.log_privilege_escalation }}
+- Log Network Anomalies: {{ security_monitoring.log_network_anomalies }}
+
+Alert Thresholds:
+- Max Failed Login Attempts: {{ security_monitoring.max_failed_login_attempts }}
+- Max Concurrent Sessions: {{ security_monitoring.max_concurrent_sessions }}
+
+EXTERNAL FIREWALL IMPLEMENTATION
+--------------------------------
+Since TrueNAS SCALE lacks native firewall API, consider these solutions:
+
+1. pfSense/OPNsense:
+   - Create firewall rules for TrueNAS traffic
+   - Implement IDS/IPS protection
+   - Monitor network traffic
+
+2. Cloud Firewalls (if running in cloud):
+   - AWS Security Groups
+   - Azure Network Security Groups
+   - GCP Firewall Rules
+
+3. Network Equipment:
+   - Configure switch ACLs
+   - Router/firewall appliance rules
+   - VLAN segmentation
+
+4. Host-based Firewalls:
+   - Configure iptables/nftables directly on TrueNAS
+   - Use firewall management tools
+   - Implement fail2ban for intrusion prevention
+
+VERIFICATION COMMANDS
+--------------------
+Test network connectivity:
+ping {{ ansible_host }}
+nmap -sT -p 22,80,443 {{ ansible_host }}
+
+Check interface configuration:
+ip addr show
+ip route show
+
+Monitor network traffic:
+ss -tuln | grep :22  # Check SSH listeners
+netstat -tuln | grep :443  # Check HTTPS listeners

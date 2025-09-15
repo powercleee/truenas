@@ -1,0 +1,61 @@
+TrueNAS SSH Security Configuration Report
+=========================================
+
+Generated: {{ ansible_date_time.iso8601 }}
+TrueNAS Host: {{ ansible_host }}
+Configured by: Ansible security role
+
+SSH SERVICE CONFIGURATION
+--------------------------
+Service Enabled: {{ ssh_service_enabled }}
+TCP Port: {{ ssh_port }}
+Root Login: {{ 'DISABLED (Secure)' if not ssh_allow_root else 'ENABLED (Risk)' }}
+Password Authentication: {{ 'DISABLED (Secure)' if not ssh_password_auth else 'ENABLED (Risk)' }}
+Kerberos Authentication: {{ 'DISABLED' if not ssh_kerberos_auth else 'ENABLED' }}
+TCP Forwarding: {{ 'DISABLED (Secure)' if not ssh_tcp_forwarding else 'ENABLED (Risk)' }}
+Compression: {{ 'DISABLED (Secure)' if not ssh_compression else 'ENABLED (Risk)' }}
+Weak Ciphers: {{ 'DISABLED (Secure)' if not ssh_weak_ciphers else 'ENABLED (Risk)' }}
+
+SFTP LOGGING CONFIGURATION
+---------------------------
+Log Level: {{ ssh_sftp_log_level }}
+Log Facility: {{ ssh_sftp_log_facility }}
+
+ADDITIONAL SECURITY OPTIONS
+----------------------------
+{{ ssh_additional_options }}
+
+SECURITY RECOMMENDATIONS
+------------------------
+✅ SSH service configured for security
+{% if not ssh_allow_root %}✅ Root login disabled (recommended){% else %}❌ Root login enabled (security risk){% endif %}
+{% if not ssh_password_auth %}✅ Password authentication disabled (recommended){% else %}❌ Password authentication enabled (use key-based auth instead){% endif %}
+{% if not ssh_tcp_forwarding %}✅ TCP forwarding disabled (recommended){% else %}❌ TCP forwarding enabled (potential security risk){% endif %}
+{% if not ssh_compression %}✅ Compression disabled (recommended){% else %}❌ Compression enabled (potential attack vector){% endif %}
+{% if not ssh_weak_ciphers %}✅ Weak ciphers disabled (recommended){% else %}❌ Weak ciphers enabled (use strong ciphers only){% endif %}
+
+NEXT STEPS
+----------
+1. Ensure SSH keys are properly configured for all users
+2. Consider changing SSH port {{ ssh_port }} to a non-standard port (if not already done)
+3. Implement network-level access controls (firewall rules)
+4. Monitor SSH logs for suspicious activity: tail -f /var/log/auth.log
+5. Regularly review SSH authorized_keys files
+6. Consider implementing fail2ban or similar intrusion detection
+
+FIREWALL RECOMMENDATIONS
+------------------------
+Implement these rules in your external firewall:
+- Allow SSH (port {{ ssh_port }}) only from trusted networks
+- Block all other inbound SSH attempts
+- Implement rate limiting for SSH connections
+- Log and monitor SSH connection attempts
+
+CONNECTION TEST
+---------------
+To test SSH connectivity with security settings:
+ssh -p {{ ssh_port }} ansible@{{ ansible_host }}
+
+For security testing, verify these commands fail (as expected):
+ssh -p {{ ssh_port }} root@{{ ansible_host }}  # Should fail if root login disabled
+ssh -o PreferredAuthentications=password -p {{ ssh_port }} ansible@{{ ansible_host }}  # Should fail if password auth disabled

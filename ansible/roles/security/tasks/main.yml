@@ -1,0 +1,162 @@
+---
+- name: Get current SSH service configuration
+  uri:
+    url: "{{ truenas_api_url }}/service/id/ssh"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: current_ssh_config
+  tags:
+    - security
+    - ssh
+    - api
+
+- name: Display current SSH configuration for review
+  debug:
+    msg:
+      - "Current SSH Configuration:"
+      - "TCP Port: {{ current_ssh_config.json.config.tcpport }}"
+      - "Root Login: {{ current_ssh_config.json.config.rootlogin }}"
+      - "Password Auth: {{ current_ssh_config.json.config.passwordauth }}"
+      - "Compression: {{ current_ssh_config.json.config.compression }}"
+      - "Service Enabled: {{ current_ssh_config.json.enable }}"
+  tags:
+    - security
+    - ssh
+    - debug
+
+- name: Apply SSH hardening configuration
+  uri:
+    url: "{{ truenas_api_url }}/service/id/ssh"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      config:
+        tcpport: "{{ ssh_port }}"
+        rootlogin: "{{ ssh_allow_root }}"
+        passwordauth: "{{ ssh_password_auth }}"
+        kerberosauth: "{{ ssh_kerberos_auth }}"
+        tcpfwd: "{{ ssh_tcp_forwarding }}"
+        compression: "{{ ssh_compression }}"
+        weak_ciphers: "{{ ssh_weak_ciphers }}"
+        sftp_log_level: "{{ ssh_sftp_log_level }}"
+        sftp_log_facility: "{{ ssh_sftp_log_facility }}"
+        options: "{{ ssh_additional_options }}"
+      enable: "{{ ssh_service_enabled }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: ssh_config_result
+  when: apply_ssh_hardening | default(true)
+  tags:
+    - security
+    - ssh
+    - api
+
+- name: Restart SSH service if configuration changed
+  uri:
+    url: "{{ truenas_api_url }}/service/restart"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      service: "ssh"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  when:
+    - apply_ssh_hardening | default(true)
+    - ssh_config_result is changed
+  tags:
+    - security
+    - ssh
+    - api
+
+- name: Get current network interfaces
+  uri:
+    url: "{{ truenas_api_url }}/interface"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: current_interfaces
+  tags:
+    - security
+    - network
+    - api
+
+- name: Display network interfaces for review
+  debug:
+    msg:
+      - "Available Network Interfaces:"
+      - "{{ current_interfaces.json | map(attribute='name') | join(', ') }}"
+  tags:
+    - security
+    - network
+    - debug
+
+- name: Configure network interface security settings
+  uri:
+    url: "{{ truenas_api_url }}/interface/id/{{ item.name }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      description: "{{ item.description | default('Managed by Ansible') }}"
+      mtu: "{{ item.mtu | default(1500) }}"
+    status_code: [200, 404]  # 404 if interface doesn't exist
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ network_interfaces }}"
+  when:
+    - apply_network_optimization | default(true)
+    - item.name in (current_interfaces.json | map(attribute='name') | list)
+  ignore_errors: true  # Some interfaces might not be configurable
+  tags:
+    - security
+    - network
+    - api
+
+- name: Generate SSH security report
+  template:
+    src: ssh_security_report.txt.j2
+    dest: /tmp/ssh_security_report.txt
+    mode: '0644'
+  tags:
+    - security
+    - ssh
+    - reports
+
+- name: Generate network security report
+  template:
+    src: network_security_report.txt.j2
+    dest: /tmp/network_security_report.txt
+    mode: '0644'
+  tags:
+    - security
+    - network
+    - reports
+
+- name: Display security configuration summary
+  debug:
+    msg:
+      - "TrueNAS Security Configuration Applied:"
+      - "SSH Port: {{ ssh_port }}"
+      - "SSH Root Login: {{ 'Disabled' if not ssh_allow_root else 'Enabled' }}"
+      - "SSH Password Auth: {{ 'Disabled' if not ssh_password_auth else 'Enabled' }}"
+      - "Network Interfaces Configured: {{ network_interfaces | length }}"
+      - ""
+      - "Security Reports Generated:"
+      - "- SSH Security: /tmp/ssh_security_report.txt"
+      - "- Network Security: /tmp/network_security_report.txt"
+      - ""
+      - "⚠️  Firewall Note: TrueNAS SCALE doesn't provide native firewall API."
+      - "   Consider external firewall solutions for advanced rule management."
+  tags:
+    - security
+    - summary
