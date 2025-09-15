@@ -3,8 +3,8 @@ truenas_api_url: "http://{{ ansible_host }}"
 truenas_api_key: "{{ api_key }}"
 
 zfs_arc_settings:
-  arc_max: 8589934592
-  arc_min: 2147483648
+  arc_max: 107374182400  # 100GB (52% of 192GB RAM - balanced for containers + storage)
+  arc_min: 16106127360   # 15GB (minimum for consistent performance with containers)
 
 cpu_governor_settings:
   governor: "performance"
@@ -15,19 +15,30 @@ cpu_governor_settings:
     - "conservative"
 
 network_buffer_settings:
-  net_core_rmem_max: 134217728
-  net_core_wmem_max: 134217728
-  net_core_rmem_default: 262144
-  net_core_wmem_default: 262144
-  net_ipv4_tcp_rmem: "4096 65536 134217728"
-  net_ipv4_tcp_wmem: "4096 65536 134217728"
-  net_core_netdev_max_backlog: 5000
-  net_ipv4_tcp_congestion_control: "bbr"
+  # Optimized for 4x 10GbE + 2x 1GbE mixed network (40Gbps aggregate)
+  net_core_rmem_max: 536870912      # 512MB (large buffers for 10GbE file sharing)
+  net_core_wmem_max: 536870912      # 512MB (large buffers for 10GbE replication)
+  net_core_rmem_default: 1048576    # 1MB (higher default for 10GbE performance)
+  net_core_wmem_default: 1048576    # 1MB (higher default for 10GbE performance)
+  net_ipv4_tcp_rmem: "8192 262144 536870912"    # 8KB min, 256KB default, 512MB max
+  net_ipv4_tcp_wmem: "8192 262144 536870912"    # 8KB min, 256KB default, 512MB max
+  net_core_netdev_max_backlog: 30000            # High backlog for multiple 10GbE interfaces
+  net_ipv4_tcp_congestion_control: "bbr"        # BBR optimal for high-speed networks
+
+  # Additional high-speed network optimizations
+  net_core_netdev_budget: 600                   # Process more packets per poll cycle
+  net_core_netdev_budget_usecs: 8000            # Extended budget time for 10GbE
+  net_ipv4_tcp_window_scaling: 1                # Enable window scaling for high BDP
+  net_ipv4_tcp_timestamps: 1                    # Enable timestamps for RTT calculation
+  net_ipv4_tcp_sack: 1                          # Enable selective acknowledgment
+  net_ipv4_tcp_no_metrics_save: 1               # Don't cache connection metrics
+  net_ipv4_tcp_mtu_probing: 1                   # Enable MTU probing (good for 10GbE)
+  net_ipv4_tcp_adv_win_scale: 2                 # Optimize advertised window scaling
 
 storage_io_settings:
   scheduler: "mq-deadline"
-  queue_depth: 32
-  read_ahead_kb: 4096
+  queue_depth: 64                  # Higher queue depth for high-memory system
+  read_ahead_kb: 8192              # Larger read-ahead for 10GbE file sharing workloads
 
 performance_reporting:
   enabled: true
