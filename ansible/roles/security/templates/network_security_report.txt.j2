@@ -1,5 +1,5 @@
 TrueNAS Network Security Configuration Report
-==============================================
+======================================================
 
 Generated: {{ ansible_date_time.iso8601 }}
 TrueNAS Host: {{ ansible_host }}
@@ -90,9 +90,45 @@ NETWORK HARDENING CHECKLIST
 □ Regular network security audits
 □ Monitor bandwidth usage for anomalies
 
-TCP/IP STACK HARDENING
-----------------------
-Recommended sysctl settings (implement via system configuration):
+TCP/IP STACK HARDENING (API-MANAGED)
+------------------------------------
+{% if apply_tcp_tuning %}
+✅ TCP Tuning Applied via TrueNAS API (Mixed-Speed Optimization):
+
+Conservative settings for 1GbE management + 10GbE data interfaces:
+{% for var, value in tcp_tuning_variables.items() %}
+{{ var }} = {{ value }}
+{% endfor %}
+
+Optimization Benefits:
+- 64MB buffer limits (safe for 1GbE, beneficial for 10GbE)
+- Moderate queue depth (5000) for mixed interface speeds
+- Modern TCP features enabled across all interfaces
+- HTCP congestion control suitable for all speeds
+
+Management:
+- API Endpoint: {{ truenas_api_url }}/tunable
+- Web UI: System → Advanced → Sysctl
+- Search Filter: "net." in the Web UI
+- Persistence: Automatic via TrueNAS middleware
+- Backups: Included in TrueNAS configuration exports
+{% else %}
+❌ TCP Tuning: Disabled (set apply_tcp_tuning: true to enable)
+{% endif %}
+
+NIC OFFLOADING OPTIMIZATION
+---------------------------
+❌ NIC Offloading: Not available via TrueNAS API
+   NIC offloading features (TSO, GSO, LRO, checksum offloading) require
+   direct ethtool commands which are not supported in this API-only implementation.
+
+   These features must be configured manually or through external automation:
+   - TCP Segmentation Offload (TSO)
+   - Generic Segmentation Offload (GSO)
+   - Large Receive Offload (LRO)
+   - RX/TX Checksum Offloading
+
+Additional security sysctl settings for manual implementation:
 {% for setting, value in network_security.items() %}
 net.ipv4.{{ setting }}: {{ value | lower }}
 {% endfor %}
@@ -140,16 +176,40 @@ Since TrueNAS SCALE lacks native firewall API, consider these solutions:
    - Use firewall management tools
    - Implement fail2ban for intrusion prevention
 
-VERIFICATION COMMANDS
---------------------
+VERIFICATION COMMANDS (API-BASED)
+---------------------------------
 Test network connectivity:
 ping {{ ansible_host }}
 nmap -sT -p 22,80,443 {{ ansible_host }}
 
-Check interface configuration:
-ip addr show
-ip route show
+Verify TCP tuning via TrueNAS API:
+curl -H "Authorization: Bearer $API_KEY" \
+  "{{ truenas_api_url }}/tunable" | \
+  jq '.[] | select(.var | startswith("net."))'
 
-Monitor network traffic:
-ss -tuln | grep :22  # Check SSH listeners
-netstat -tuln | grep :443  # Check HTTPS listeners
+Check active sysctl values:
+{% for var in tcp_tuning_variables.keys() %}
+sysctl {{ var }}
+{% endfor %}
+
+Web UI Verification:
+1. Navigate to System → Advanced → Sysctl
+2. Search for "net." to see network optimizations
+3. Verify values match configuration
+4. Check "Enabled" status
+
+API Management Commands:
+# List all tunables
+curl -H "Authorization: Bearer $API_KEY" {{ truenas_api_url }}/tunable
+
+# Apply tunables immediately
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  {{ truenas_api_url }}/tunable/load -d '{}'
+
+Network Interface Verification:
+curl -H "Authorization: Bearer $API_KEY" {{ truenas_api_url }}/interface
+
+Note: NIC offloading features require manual ethtool commands:
+# Example (must be run directly on TrueNAS system):
+# ethtool -k eth0 | grep -E "(tcp|rx|tx|gso|tso|lro)"

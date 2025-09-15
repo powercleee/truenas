@@ -23,8 +23,6 @@ if [[ ! -f "bootstrap-api-user.yml" ]]; then
     exit 1
 fi
 
-# No SSH key needed for API-only approach
-
 # Check if API inventory exists
 if [[ ! -f "bootstrap-api-inventory.yml" ]]; then
     log_error "bootstrap-api-inventory.yml not found"

@@ -53,7 +53,7 @@
           - "Target ZFS pool: {{ zfs_pool }} ✅ VERIFIED"
           - "Available pools: {{ all_pools.json | map(attribute='name') | join(', ') }}"
           - "Total services to configure: 61"
-          - "Running from: localhost (API-only, no SSH required)"
+          - "Running from: localhost"
           - "Mode: {{ 'CHECK MODE - No changes will be made' if ansible_check_mode else 'LIVE MODE - Changes will be applied' }}"
       tags: always
 

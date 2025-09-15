@@ -6,7 +6,10 @@ truenas_validate_certs: false
 
 # Security Configuration Control Flags
 apply_ssh_hardening: true
-apply_network_optimization: true
+apply_tcp_tuning: true
+
+# Only API-based configurations are supported
+# NIC offloading removed (requires direct ethtool commands)
 
 # SSH Hardening Configuration
 ssh_service_enabled: true
@@ -165,3 +168,55 @@ system_security:
   # Kernel security
   disable_core_dumps: true
   enable_aslr: true
+
+# TCP Tuning Variables for TrueNAS API (Mixed-Speed: 1GbE Management + 10GbE Data)
+tcp_tuning_variables:
+  # TCP Buffer Sizes (64MB - conservative for mixed 1GbE/10GbE environment)
+  "net.core.rmem_max": "67108864"      # 64MB (down from 512MB for 1GbE compatibility)
+  "net.core.wmem_max": "67108864"      # 64MB (down from 512MB for 1GbE compatibility)
+
+  # TCP Read/Write Memory (min default max in bytes)
+  "net.ipv4.tcp_rmem": "4096 87380 67108864"   # 64MB max (conservative)
+  "net.ipv4.tcp_wmem": "4096 65536 67108864"   # 64MB max (conservative)
+
+  # Network Device Queue Settings (moderate for mixed speeds)
+  "net.core.netdev_max_backlog": "5000"       # Down from 30000 for 1GbE compatibility
+
+  # TCP Congestion Control Algorithm (htcp works well across speeds)
+  "net.ipv4.tcp_congestion_control": "htcp"
+
+  # TCP MTU Probing (beneficial for all interface speeds)
+  "net.ipv4.tcp_mtu_probing": "1"
+
+  # TCP optimizations (beneficial across all speeds)
+  "net.ipv4.tcp_window_scaling": "1"
+  "net.ipv4.tcp_timestamps": "1"
+  "net.ipv4.tcp_sack": "1"
+  "net.ipv4.tcp_no_metrics_save": "1"
+
+  # Socket buffer defaults (reasonable for mixed environment)
+  "net.core.rmem_default": "262144"    # 256KB
+  "net.core.wmem_default": "262144"    # 256KB
+
+  # Network performance (moderate settings)
+  "net.core.netdev_budget": "600"
+  "net.core.netdev_budget_usecs": "5000"
+
+# Cleanup existing conflicting tunables before creating new ones
+cleanup_existing_tunables: false
+
+# Legacy TCP tuning structure (updated for mixed-speed environment)
+tcp_tuning:
+  rmem_max: "67108864"      # 64MB (conservative)
+  wmem_max: "67108864"      # 64MB (conservative)
+  tcp_rmem: "4096 87380 67108864"    # 64MB max
+  tcp_wmem: "4096 65536 67108864"    # 64MB max
+  netdev_max_backlog: "5000"        # Moderate setting
+  mtu_probing: "1"
+  rmem_default: "262144"
+  wmem_default: "262144"
+  netdev_budget: "600"
+  netdev_budget_usecs: "5000"
+
+# TCP Congestion Control Algorithm (included in tcp_tuning_variables)
+# No separate variable needed - managed via API

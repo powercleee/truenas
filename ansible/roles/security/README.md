@@ -1,17 +1,22 @@
 # TrueNAS Security Role
 
-This Ansible role implements network and security configurations for TrueNAS SCALE systems using the TrueNAS API.
+This Ansible role implements network and security configurations for TrueNAS SCALE systems using **exclusively** the TrueNAS middleware API. No direct system commands are executed.
 
 ## Features
 
 - **SSH Hardening**: Configures secure SSH settings including disabled root login, key-based authentication, and strong ciphers
-- **Network Interface Optimization**: Optimizes network interface settings for security and performance
+- **TCP Tuning (API-Managed)**: Optimizes TCP settings for mixed-speed networks (1GbE + 10GbE) using TrueNAS middleware API
+- **Network Interface Optimization**: Basic network interface configuration via API
 - **Security Reporting**: Generates comprehensive security reports for review and compliance
 - **Service Binding**: Configures service-specific network binding for security isolation
 
-## Important Limitations
+## Important Limitations (API-Only Implementation)
 
-⚠️ **Firewall Management**: TrueNAS SCALE does not provide native firewall API endpoints. This role documents recommended firewall rules but cannot implement them directly. External firewall solutions are required for comprehensive network security.
+⚠️ **Firewall Management**: TrueNAS SCALE does not provide native firewall API endpoints. This role documents recommended firewall rules but cannot implement them directly.
+
+⚠️ **NIC Offloading**: Hardware offloading features (TSO, GSO, LRO, checksum offloading) require direct `ethtool` commands and are not available via TrueNAS API. These must be configured manually or through external automation.
+
+⚠️ **System Commands**: This role exclusively uses TrueNAS API endpoints. No direct system commands, sysctl, or ethtool operations are performed.
 
 ## Prerequisites
 
@@ -26,6 +31,8 @@ This Ansible role implements network and security configurations for TrueNAS SCA
 - `/api/v2.0/service/restart` - Service restart operations
 - `/api/v2.0/interface` - Network interface management
 - `/api/v2.0/interface/id/{id}` - Specific interface configuration
+- `/api/v2.0/tunable` - System tunable (sysctl) management
+- `/api/v2.0/tunable/load` - Apply tunables immediately
 
 ## Configuration
 
@@ -43,13 +50,35 @@ ssh_compression: false         # Disable compression
 ssh_weak_ciphers: false        # Disable weak ciphers
 ```
 
-### Network Interface Configuration
+### TCP Tuning
 
 ```yaml
-# Enable/disable network optimization
-apply_network_optimization: true
+# Enable/disable TCP tuning via TrueNAS API
+apply_tcp_tuning: true
 
-# Network interfaces to configure
+# TCP tuning variables (managed via TrueNAS API)
+# Conservative settings for mixed 1GbE/10GbE environment
+tcp_tuning_variables:
+  "net.core.rmem_max": "67108864"          # 64MB (conservative)
+  "net.core.wmem_max": "67108864"          # 64MB (conservative)
+  "net.ipv4.tcp_rmem": "4096 87380 67108864"    # 64MB max
+  "net.ipv4.tcp_wmem": "4096 65536 67108864"    # 64MB max
+  "net.core.netdev_max_backlog": "5000"        # Moderate for mixed speeds
+  "net.ipv4.tcp_congestion_control": "htcp"
+  "net.ipv4.tcp_mtu_probing": "1"
+  "net.ipv4.tcp_window_scaling": "1"
+  "net.ipv4.tcp_timestamps": "1"
+  "net.ipv4.tcp_sack": "1"
+  "net.ipv4.tcp_no_metrics_save": "1"
+  "net.core.rmem_default": "262144"
+  "net.core.wmem_default": "262144"
+  "net.core.netdev_budget": "600"
+  "net.core.netdev_budget_usecs": "5000"
+
+# Cleanup existing conflicting tunables (optional)
+cleanup_existing_tunables: false
+
+# Basic network interface configuration (API-managed)
 network_interfaces:
   - name: "enp0s3"
     description: "Primary Network - Security Optimized"
@@ -92,6 +121,9 @@ ansible-playbook site.yml --tags "security,ssh"
 
 # Apply network optimization only
 ansible-playbook site.yml --tags "security,network"
+
+# Apply TCP tuning via API only
+ansible-playbook site.yml --tags "security,optimization,api"
 ```
 
 ### Dry Run (Check Mode)
@@ -129,10 +161,13 @@ The role generates security reports in `/tmp/`:
 
 ### Network Security
 
-✅ **Interface optimization** - MTU and performance tuning
+✅ **TCP tuning** - Mixed-speed network optimization (1GbE + 10GbE) via TrueNAS API
+✅ **Interface configuration** - Basic MTU and description settings
 ✅ **Service binding** - Restrict services to specific interfaces
 ✅ **Security reporting** - Comprehensive configuration documentation
-✅ **Firewall documentation** - External firewall rule recommendations
+✅ **Web UI integration** - All settings visible in TrueNAS interface
+❌ **NIC offloading** - Requires direct ethtool commands (not available)
+❌ **Advanced networking** - Limited to API-exposed features only
 
 ## Firewall Implementation
 
