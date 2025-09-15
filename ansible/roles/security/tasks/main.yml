@@ -91,51 +91,6 @@
     - ssh
     - api
 
-- name: Get current network interfaces
-  uri:
-    url: "{{ truenas_api_url }}/interface"
-    method: GET
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-    validate_certs: "{{ truenas_validate_certs }}"
-  register: current_interfaces
-  tags:
-    - security
-    - network
-    - api
-
-- name: Display network interfaces for review
-  debug:
-    msg:
-      - "Available Network Interfaces:"
-      - "{{ current_interfaces.json | map(attribute='name') | join(', ') }}"
-  tags:
-    - security
-    - network
-    - debug
-
-- name: Configure network interface security settings
-  uri:
-    url: "{{ truenas_api_url }}/interface/id/{{ item.name }}"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      description: "{{ item.description | default('Managed by Ansible') }}"
-      mtu: "{{ item.mtu | default(1500) }}"
-    status_code: [200, 404]  # 404 if interface doesn't exist
-    validate_certs: "{{ truenas_validate_certs }}"
-  loop: "{{ network_interfaces }}"
-  when:
-    - apply_network_optimization | default(true)
-    - item.name in (current_interfaces.json | map(attribute='name') | list)
-  ignore_errors: true  # Some interfaces might not be configurable
-  tags:
-    - security
-    - network
-    - api
 
 - name: Generate SSH security report
   template:
@@ -147,14 +102,6 @@
     - ssh
     - reports
 
-- name: Include API-based network optimization tasks
-  include_tasks: network_optimization.yml
-  when: apply_tcp_tuning | default(true)
-  tags:
-    - security
-    - network
-    - optimization
-    - api
 
 - name: Generate SSH security report
   template:
@@ -183,12 +130,9 @@
       - "SSH Port: {{ ssh_port }}"
       - "SSH Root Login: {{ 'Disabled' if not ssh_allow_root else 'Enabled' }}"
       - "SSH Password Auth: {{ 'Disabled' if not ssh_password_auth else 'Enabled' }}"
-      - "TCP Tuning Applied: {{ 'Yes (via API)' if apply_tcp_tuning else 'No' }}"
       - ""
       - "API-Managed Settings:"
       - "- SSH Service: {{ truenas_api_url }}/service/id/ssh"
-      - "- Network Interfaces: {{ truenas_api_url }}/interface"
-      - "- TCP Tunables: {{ truenas_api_url }}/tunable"
       - ""
       - "Security Reports Generated:"
       - "- SSH Security: /tmp/ssh_security_report.txt"
@@ -196,15 +140,12 @@
       - ""
       - "Web UI Management:"
       - "- SSH Config: Services → SSH"
-      - "- TCP Tuning: System → Advanced → Sysctl"
-      - "- Network Interfaces: Network"
       - ""
       - "✅ All configurations managed through TrueNAS middleware API"
       - "✅ Settings visible and editable in TrueNAS Web UI"
       - "✅ Persistent across reboots and system updates"
       - ""
-      - "⚠️  Note: NIC offloading and firewall management require direct system"
-      - "   commands and are not included in this API-only implementation."
+      - "⚠️  Note: Firewall management requires external tools."
   tags:
     - security
     - summary

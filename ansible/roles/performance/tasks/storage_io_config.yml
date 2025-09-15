@@ -1,0 +1,167 @@
+---
+- name: Get current storage I/O tunable settings
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    validate_certs: false
+  register: current_tunables
+
+- name: Configure storage I/O scheduler
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "kern.cam.sort_io_queues"
+      value: "1"
+      type: "SYSCTL"
+      comment: "Enable I/O queue sorting for better performance - configured by Ansible"
+      enabled: true
+    validate_certs: false
+    status_code: [200, 201]
+  when: current_tunables.json | selectattr('var', 'equalto', 'kern.cam.sort_io_queues') | list | length == 0
+  register: io_queue_result
+
+- name: Update existing storage I/O scheduler
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable/{{ (current_tunables.json | selectattr('var', 'equalto', 'kern.cam.sort_io_queues') | first).id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "kern.cam.sort_io_queues"
+      value: "1"
+      type: "SYSCTL"
+      comment: "Enable I/O queue sorting for better performance - configured by Ansible"
+      enabled: true
+    validate_certs: false
+  when: current_tunables.json | selectattr('var', 'equalto', 'kern.cam.sort_io_queues') | list | length > 0
+  register: io_queue_update_result
+
+- name: Configure ZFS vdev cache size
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "vfs.zfs.vdev.cache.size"
+      value: "10485760"
+      type: "SYSCTL"
+      comment: "ZFS vdev cache size optimization - configured by Ansible"
+      enabled: true
+    validate_certs: false
+    status_code: [200, 201]
+  when: current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.vdev.cache.size') | list | length == 0
+  register: vdev_cache_result
+
+- name: Update existing ZFS vdev cache size
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable/{{ (current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.vdev.cache.size') | first).id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "vfs.zfs.vdev.cache.size"
+      value: "10485760"
+      type: "SYSCTL"
+      comment: "ZFS vdev cache size optimization - configured by Ansible"
+      enabled: true
+    validate_certs: false
+  when: current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.vdev.cache.size') | list | length > 0
+  register: vdev_cache_update_result
+
+- name: Configure ZFS prefetch settings
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "vfs.zfs.prefetch_disable"
+      value: "0"
+      type: "SYSCTL"
+      comment: "Enable ZFS prefetching for better I/O performance - configured by Ansible"
+      enabled: true
+    validate_certs: false
+    status_code: [200, 201]
+  when: current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.prefetch_disable') | list | length == 0
+  register: prefetch_result
+
+- name: Update existing ZFS prefetch settings
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable/{{ (current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.prefetch_disable') | first).id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "vfs.zfs.prefetch_disable"
+      value: "0"
+      type: "SYSCTL"
+      comment: "Enable ZFS prefetching for better I/O performance - configured by Ansible"
+      enabled: true
+    validate_certs: false
+  when: current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.prefetch_disable') | list | length > 0
+  register: prefetch_update_result
+
+- name: Configure ZFS txg timeout
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "vfs.zfs.txg.timeout"
+      value: "5"
+      type: "SYSCTL"
+      comment: "Optimize ZFS transaction group timeout - configured by Ansible"
+      enabled: true
+    validate_certs: false
+    status_code: [200, 201]
+  when: current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.txg.timeout') | list | length == 0
+  register: txg_timeout_result
+
+- name: Update existing ZFS txg timeout
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable/{{ (current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.txg.timeout') | first).id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "vfs.zfs.txg.timeout"
+      value: "5"
+      type: "SYSCTL"
+      comment: "Optimize ZFS transaction group timeout - configured by Ansible"
+      enabled: true
+    validate_certs: false
+  when: current_tunables.json | selectattr('var', 'equalto', 'vfs.zfs.txg.timeout') | list | length > 0
+  register: txg_timeout_update_result
+
+- name: Display storage I/O configuration results
+  debug:
+    msg: |
+      Storage I/O Configuration:
+      - I/O Queue Sorting: Enabled
+      - ZFS vdev Cache Size: {{ 10485760 | int / 1024 / 1024 }}MB
+      - ZFS Prefetching: Enabled
+      - ZFS TXG Timeout: 5 seconds
+      - Configuration Status: {{ 'Updated' if io_queue_update_result.changed or vdev_cache_update_result.changed or prefetch_update_result.changed or txg_timeout_update_result.changed else 'Created' if io_queue_result.changed or vdev_cache_result.changed or prefetch_result.changed or txg_timeout_result.changed else 'Already Configured' }}

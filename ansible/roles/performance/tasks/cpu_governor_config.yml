@@ -1,0 +1,91 @@
+---
+- name: Get current CPU governor tunable settings
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    validate_certs: false
+  register: current_tunables
+
+- name: Set CPU frequency governor
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "dev.cpu.0.freq_levels"
+      value: "{{ cpu_governor_settings.governor }}"
+      type: "SYSCTL"
+      comment: "CPU governor setting - configured by Ansible"
+      enabled: true
+    validate_certs: false
+    status_code: [200, 201]
+  when: current_tunables.json | selectattr('var', 'equalto', 'dev.cpu.0.freq_levels') | list | length == 0
+  register: cpu_governor_result
+
+- name: Update existing CPU frequency governor
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable/{{ (current_tunables.json | selectattr('var', 'equalto', 'dev.cpu.0.freq_levels') | first).id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "dev.cpu.0.freq_levels"
+      value: "{{ cpu_governor_settings.governor }}"
+      type: "SYSCTL"
+      comment: "CPU governor setting - configured by Ansible"
+      enabled: true
+    validate_certs: false
+  when: current_tunables.json | selectattr('var', 'equalto', 'dev.cpu.0.freq_levels') | list | length > 0
+  register: cpu_governor_update_result
+
+- name: Set CPU performance bias
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "machdep.hwpstate_pkg_ctrl"
+      value: "1"
+      type: "SYSCTL"
+      comment: "Enable hardware P-state control for performance - configured by Ansible"
+      enabled: true
+    validate_certs: false
+    status_code: [200, 201]
+  when: current_tunables.json | selectattr('var', 'equalto', 'machdep.hwpstate_pkg_ctrl') | list | length == 0
+  register: cpu_hwpstate_result
+
+- name: Update existing CPU performance bias
+  uri:
+    url: "{{ truenas_api_url }}/api/v2.0/tunable/{{ (current_tunables.json | selectattr('var', 'equalto', 'machdep.hwpstate_pkg_ctrl') | first).id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "machdep.hwpstate_pkg_ctrl"
+      value: "1"
+      type: "SYSCTL"
+      comment: "Enable hardware P-state control for performance - configured by Ansible"
+      enabled: true
+    validate_certs: false
+  when: current_tunables.json | selectattr('var', 'equalto', 'machdep.hwpstate_pkg_ctrl') | list | length > 0
+  register: cpu_hwpstate_update_result
+
+- name: Display CPU governor configuration results
+  debug:
+    msg: |
+      CPU Governor Configuration:
+      - Governor: {{ cpu_governor_settings.governor }}
+      - Hardware P-state Control: Enabled
+      - Configuration Status: {{ 'Updated' if cpu_governor_update_result.changed or cpu_hwpstate_update_result.changed else 'Created' if cpu_governor_result.changed or cpu_hwpstate_result.changed else 'Already Configured' }}
