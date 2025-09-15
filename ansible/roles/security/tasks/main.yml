@@ -136,8 +136,8 @@
       - "✅ Settings visible and editable in TrueNAS Web UI"
       - "✅ Persistent across reboots and system updates"
       - ""
-      - "⚠️  Note: Network security hardening applied via sysctl. Performance tuning"
-      - "   (TCP buffers, ZFS ARC, etc.) is handled by the 'performance' role."
+      - "⚠️  Note: Network security hardening applied via sysctl."
+      - "   Performance tuning and firewall management can be configured separately."
       - "   Firewall management requires external tools."
   tags:
     - security

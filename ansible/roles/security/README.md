@@ -12,8 +12,6 @@ This Ansible role implements security configurations for TrueNAS SCALE systems u
 
 ⚠️ **Firewall Management**: TrueNAS SCALE does not provide native firewall API endpoints. This role documents recommended firewall rules but cannot implement them directly.
 
-⚠️ **Performance Tuning**: TCP/network tuning, ZFS ARC configuration, and other performance settings are handled by the dedicated 'performance' role.
-
 ⚠️ **System Commands**: This role exclusively uses TrueNAS API endpoints. No direct system commands, sysctl, or ethtool operations are performed.
 
 ## Prerequisites
@@ -115,7 +113,7 @@ The role generates security reports in `/tmp/`:
 ✅ **Service binding** - Restrict services to specific interfaces (documented)
 ✅ **Security reporting** - Comprehensive configuration documentation
 ✅ **Web UI integration** - All settings visible in TrueNAS interface
-❌ **Performance tuning** - Handled by dedicated 'performance' role
+❌ **Performance tuning** - Not within scope of security role
 ❌ **Advanced networking** - Limited to API-exposed features only
 
 ## Firewall Implementation

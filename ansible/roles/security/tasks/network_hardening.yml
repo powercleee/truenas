@@ -34,7 +34,7 @@
       var: "{{ item.key }}"
       value: "{{ item.value }}"
       type: "SYSCTL"
-      comment: "{{ network_tunable_descriptions[item.key] | default('Network security hardening - ' + item.key) }} [Ansible]"
+      comment: "{{ network_tunable_descriptions[item.key] | default('Network security hardening - ' + item.key) }}"
       enabled: true
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
@@ -83,7 +83,7 @@
       var: "{{ item.key }}"
       value: "{{ item.value }}"
       type: "SYSCTL"
-      comment: "{{ network_tunable_descriptions[item.key] | default('Network security hardening - ' + item.key) }} [Ansible]"
+      comment: "{{ network_tunable_descriptions[item.key] | default('Network security hardening - ' + item.key) }}"
       enabled: true
     status_code: [200]
     validate_certs: "{{ truenas_validate_certs }}"
