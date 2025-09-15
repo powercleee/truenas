@@ -81,13 +81,6 @@
         - hardening
         - setup
 
-    - role: performance
-      tags:
-        - performance
-        - tuning
-        - optimization
-        - setup
-
   post_tasks:
     - name: Display completion summary
       debug:
@@ -98,7 +91,6 @@
           - "Datasets created: Main datasets, application datasets for all {{ service_users | length }} services"
           - "Snapshots configured: {{ snapshot_method | title }} snapshot management enabled"
           - "Security hardening applied: SSH hardening, network security tunables"
-          - "Performance tuning applied: ZFS ARC ({{ (zfs_arc_settings.arc_max | int / 1024 / 1024 / 1024) | round(0) }}GB), network buffers, storage I/O"
           - ""
           - "Next steps:"
           - "1. Deploy your containerized services using the created users and datasets"

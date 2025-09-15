@@ -34,7 +34,7 @@
       var: "{{ item.key }}"
       value: "{{ item.value }}"
       type: "SYSCTL"
-      comment: "Network security hardening - {{ item.key }} - managed by Ansible"
+      comment: "{{ network_tunable_descriptions[item.key] | default('Network security hardening - ' + item.key) }} [Ansible]"
       enabled: true
     status_code: [200, 409]  # 409 = already exists
     validate_certs: "{{ truenas_validate_certs }}"
@@ -49,20 +49,13 @@
     - hardening
     - api
 
-- name: Update existing network security tunables if values differ
+
+- name: Delete existing network security tunables to force recreation
   uri:
     url: "{{ truenas_api_url }}/tunable/id/{{ existing_tunable.id }}"
-    method: PUT
+    method: DELETE
     headers:
       Authorization: "Bearer {{ truenas_api_key }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      var: "{{ item.key }}"
-      value: "{{ item.value }}"
-      type: "SYSCTL"
-      comment: "Network security hardening - {{ item.key }} - managed by Ansible (updated)"
-      enabled: true
     status_code: [200]
     validate_certs: "{{ truenas_validate_certs }}"
   loop: "{{ network_security_tunables | dict2items }}"
@@ -71,8 +64,33 @@
   when:
     - apply_network_hardening | default(true)
     - existing_tunable.id is defined
-    - existing_tunable.value != item.value or not existing_tunable.enabled
-  register: security_tunable_update_results
+  register: security_tunable_deletion_results
+  tags:
+    - security
+    - network
+    - hardening
+    - api
+
+- name: Recreate network security tunables with correct descriptions
+  uri:
+    url: "{{ truenas_api_url }}/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "{{ item.key }}"
+      value: "{{ item.value }}"
+      type: "SYSCTL"
+      comment: "{{ network_tunable_descriptions[item.key] | default('Network security hardening - ' + item.key) }} [Ansible]"
+      enabled: true
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ network_security_tunables | dict2items }}"
+  when:
+    - apply_network_hardening | default(true)
+  register: security_tunable_recreation_results
   tags:
     - security
     - network
@@ -92,7 +110,7 @@
     validate_certs: "{{ truenas_validate_certs }}"
   when:
     - apply_network_hardening | default(true)
-    - (security_tunable_creation_results is changed) or (security_tunable_update_results is changed)
+    - (security_tunable_creation_results is changed) or (security_tunable_recreation_results is changed)
   tags:
     - security
     - network
@@ -118,7 +136,8 @@
     msg:
       - "Network Security Hardening Applied:"
       - "Tunables Created: {{ (security_tunable_creation_results.results | default([]) | selectattr('changed', 'equalto', true) | list | length) }}"
-      - "Tunables Updated: {{ (security_tunable_update_results.results | default([]) | selectattr('changed', 'equalto', true) | list | length) }}"
+      - "Tunables Deleted: {{ (security_tunable_deletion_results.results | default([]) | selectattr('changed', 'equalto', true) | list | length) }}"
+      - "Tunables Recreated: {{ (security_tunable_recreation_results.results | default([]) | selectattr('changed', 'equalto', true) | list | length) }}"
       - "Total Security Tunables: {{ final_security_tunables.json | selectattr('var', 'match', 'net\\.(ipv4|ipv6)\\.(tcp_syncookies|icmp_|ip_forward|conf\\.).*') | list | length }}"
       - ""
       - "✅ Network hardening configured via TrueNAS API"
