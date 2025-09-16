@@ -1,0 +1,164 @@
+---
+- name: Get existing TrueNAS snapshot tasks
+  uri:
+    url: "{{ truenas_api_url }}/pool/snapshottask"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: existing_snapshot_tasks
+  tags:
+    - snapshots
+    - truenas_api
+    - api
+
+- name: Build list of desired datasets
+  set_fact:
+    desired_datasets: "{{ truenas_snapshot_tasks | map(attribute='dataset') | list }}"
+
+- name: Remove snapshot tasks not defined in configuration
+  uri:
+    url: "{{ truenas_api_url }}/pool/snapshottask/id/{{ item.id }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200, 404]  # 404 = already deleted
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ existing_snapshot_tasks.json }}"
+  when: item.dataset not in desired_datasets
+  ignore_errors: true
+  tags:
+    - snapshots
+    - cleanup
+    - truenas_api
+    - api
+
+- name: Create TrueNAS snapshot tasks via API
+  uri:
+    url: "{{ truenas_api_url }}/pool/snapshottask"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: |
+      {
+        "dataset": "{{ item.dataset }}",
+        "recursive": {{ item.recursive | lower }},
+        {% if item.exclude is defined and item.recursive %}
+        "exclude": {{ item.exclude | to_nice_json }},
+        {% endif %}
+        "lifetime_value": {{ item.lifetime_value }},
+        "lifetime_unit": "{{ item.lifetime_unit }}",
+        "naming_schema": "{{ item.naming_schema }}",
+        "schedule": {
+          "minute": "{{ item.schedule.minute }}",
+          "hour": "{{ item.schedule.hour }}",
+          "dom": "{{ item.schedule.dom }}",
+          "month": "{{ item.schedule.month }}",
+          "dow": "{{ item.schedule.dow }}"
+        },
+        "allow_empty": {{ item.allow_empty | lower }},
+        "enabled": {{ item.enabled | lower }}
+      }
+    status_code: [200, 409]  # 409 = already exists
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ truenas_snapshot_tasks }}"
+  when: item.dataset not in (existing_snapshot_tasks.json | map(attribute='dataset') | list)
+  register: snapshot_task_results
+  tags:
+    - snapshots
+    - truenas_api
+    - api
+
+- name: Check for configuration differences in existing snapshot tasks
+  debug:
+    msg:
+      - "Dataset: {{ item.dataset }}"
+      - "Exists: {{ item.dataset in (existing_snapshot_tasks.json | map(attribute='dataset') | list) }}"
+      - "Schedule match: minute={{ existing_task.schedule.minute }} vs {{ item.schedule.minute }}, hour={{ existing_task.schedule.hour }} vs {{ item.schedule.hour }}"
+      - "Retention match: {{ existing_task.lifetime_value }} {{ existing_task.lifetime_unit }} vs {{ item.lifetime_value }} {{ item.lifetime_unit }}"
+      - "Config match: recursive={{ existing_task.recursive }} vs {{ item.recursive }}, enabled={{ existing_task.enabled }} vs {{ item.enabled }}"
+  loop: "{{ truenas_snapshot_tasks }}"
+  vars:
+    existing_task: "{{ existing_snapshot_tasks.json | selectattr('dataset', 'equalto', item.dataset) | first | default({}) }}"
+  when: item.dataset in (existing_snapshot_tasks.json | map(attribute='dataset') | list)
+  tags:
+    - snapshots
+    - debug
+
+- name: Update existing snapshot tasks if configuration differs
+  uri:
+    url: "{{ truenas_api_url }}/pool/snapshottask/id/{{ existing_task.id }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: |
+      {
+        "dataset": "{{ item.dataset }}",
+        "recursive": {{ item.recursive | lower }},
+        {% if item.exclude is defined and item.recursive %}
+        "exclude": {{ item.exclude | to_nice_json }},
+        {% endif %}
+        "lifetime_value": {{ item.lifetime_value }},
+        "lifetime_unit": "{{ item.lifetime_unit }}",
+        "naming_schema": "{{ item.naming_schema }}",
+        "schedule": {
+          "minute": "{{ item.schedule.minute }}",
+          "hour": "{{ item.schedule.hour }}",
+          "dom": "{{ item.schedule.dom }}",
+          "month": "{{ item.schedule.month }}",
+          "dow": "{{ item.schedule.dow }}"
+        },
+        "allow_empty": {{ item.allow_empty | lower }},
+        "enabled": {{ item.enabled | lower }}
+      }
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ truenas_snapshot_tasks }}"
+  vars:
+    existing_task: "{{ existing_snapshot_tasks.json | selectattr('dataset', 'equalto', item.dataset) | first }}"
+  when: >
+    item.dataset in (existing_snapshot_tasks.json | map(attribute='dataset') | list) and
+    (existing_task.schedule.minute != item.schedule.minute or
+     existing_task.schedule.hour != item.schedule.hour or
+     existing_task.schedule.dom != item.schedule.dom or
+     existing_task.schedule.month != item.schedule.month or
+     existing_task.schedule.dow != item.schedule.dow or
+     existing_task.lifetime_value != item.lifetime_value or
+     existing_task.lifetime_unit != item.lifetime_unit or
+     existing_task.naming_schema != item.naming_schema or
+     existing_task.recursive != item.recursive or
+     existing_task.allow_empty != item.allow_empty or
+     existing_task.enabled != item.enabled)
+  register: snapshot_update_results
+  tags:
+    - snapshots
+    - truenas_api
+    - api
+
+- name: Generate snapshot management scripts
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: cleanup_snapshots.sh.j2, dest: /tmp/cleanup_snapshots.sh, mode: '0755' }
+    - { src: snapshot_report.sh.j2, dest: /tmp/snapshot_report.sh, mode: '0755' }
+  tags:
+    - snapshots
+    - scripts
+
+- name: Display TrueNAS API snapshot configuration summary
+  debug:
+    msg:
+      - "Snapshot tasks created via TrueNAS API"
+      - "Number of snapshot tasks: {{ truenas_snapshot_tasks | length }}"
+      - "Management scripts generated in /tmp/"
+      - "Check TrueNAS Web UI > Data Protection > Periodic Snapshot Tasks"
+      - "All snapshot tasks are now managed through TrueNAS middleware"
+  tags:
+    - snapshots
+    - summary

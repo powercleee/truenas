@@ -30,7 +30,12 @@ truenas_services:
   email_notifications: false
   smtp_server: ""
 
-# TrueNAS API configuration (if using API-based snapshot management)
+# TrueNAS API configuration
+truenas_api_url: "https://{{ ansible_host }}/api/v2.0"
+truenas_api_key: "{{ lookup('env', 'TRUENAS_API_KEY') }}"
+truenas_validate_certs: false  # TrueNAS uses self-signed certificates by default
+
+# Legacy API configuration (kept for compatibility)
 truenas_api:
   # Set these in host_vars or vault for security
   host: "{{ ansible_host }}"

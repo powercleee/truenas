@@ -25,7 +25,7 @@ The repository implements a three-stage setup process:
 ### 3. Snapshot Configuration (`snapshot_config_refined.sh`)
 - Configures automated ZFS snapshots with different retention policies
 - Critical services (databases): 15-minute snapshots, 24-hour retention
-- Important services (apps): 4-hour snapshots, 7-day retention  
+- Important services (apps): 4-hour snapshots, 7-day retention
 - Media/bulk data: 12-hour snapshots, 30-day retention
 - Supports both TrueNAS GUI integration and sanoid configurations
 
@@ -58,7 +58,7 @@ bash bash_scripts/snapshot_config_refined.sh
 ### Verification Commands
 ```bash
 # Verify user creation
-getent passwd | grep -E "(plex|sonarr|grafana)" 
+getent passwd | grep -E "(plex|sonarr|grafana)"
 
 # Check dataset creation
 zfs list | grep tank

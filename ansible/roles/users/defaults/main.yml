@@ -1,0 +1,137 @@
+---
+# Default ZFS pool name
+zfs_pool: tank
+
+# TrueNAS API Configuration
+truenas_api_url: "https://{{ ansible_host }}/api/v2.0"
+truenas_api_key: "{{ lookup('env', 'TRUENAS_API_KEY') }}"
+truenas_validate_certs: false
+
+# Service groups configuration
+service_groups:
+  - { name: media, gid: 2000, description: "Media services with shared access" }
+  - { name: download, gid: 2001, description: "Download clients" }
+  - { name: monitor, gid: 2002, description: "Monitoring and observability" }
+  - { name: devops, gid: 2003, description: "Development and CI/CD" }
+  - { name: database, gid: 2004, description: "Database services" }
+  - { name: security, gid: 2005, description: "Security and authentication" }
+  - { name: storage, gid: 2006, description: "Storage, backup, and recovery" }
+  - { name: web, gid: 2007, description: "Web applications" }
+  - { name: containers, gid: 2008, description: "Docker/LXC container management" }
+  - { name: automation, gid: 2009, description: "Automation and orchestration" }
+  - { name: networking, gid: 2010, description: "Network services" }
+
+# Service users configuration
+service_users:
+  # Media Services (11 users)
+  - { name: plex, uid: 3000, group: media, category: Media, description: "Plex Media Server" }
+  - { name: tautulli, uid: 3001, group: media, category: Media, description: "Tautulli Stats" }
+  - { name: overseerr, uid: 3002, group: media, category: Media, description: "Overseerr Requests" }
+  - { name: radarr, uid: 3003, group: media, category: Media, description: "Radarr Movies" }
+  - { name: sonarr, uid: 3004, group: media, category: Media, description: "Sonarr TV Shows" }
+  - { name: lidarr, uid: 3005, group: media, category: Media, description: "Lidarr Music" }
+  - { name: readarr, uid: 3006, group: media, category: Media, description: "Readarr Books" }
+  - { name: prowlarr, uid: 3007, group: media, category: Media, description: "Prowlarr Indexer" }
+  - { name: bazarr, uid: 3008, group: media, category: Media, description: "Bazarr Subtitles" }
+  - { name: whisparr, uid: 3009, group: media, category: Media, description: "Whisparr Content" }
+  - { name: stash, uid: 3010, group: media, category: Media, description: "Stash Media Server" }
+
+  # Download Services (4 users)
+  - { name: qbittorrent, uid: 3100, group: download, category: Download, description: "qBittorrent" }
+  - { name: sabnzbd, uid: 3101, group: download, category: Download, description: "SABnzbd Usenet" }
+  - { name: gluetun, uid: 3102, group: download, category: Download, description: "Gluetun VPN" }
+  - { name: flaresolverr, uid: 3103, group: download, category: Download, description: "FlareSolverr" }
+
+  # Security Services (9 users)
+  - { name: authentik, uid: 3200, group: security, category: Security, description: "Authentik IdP" }
+  - { name: traefik, uid: 3201, group: security, category: Security, description: "Traefik Proxy" }
+  - { name: wireguard, uid: 3202, group: security, category: Security, description: "WireGuard VPN" }
+  - { name: cloudflared, uid: 3203, group: security, category: Security, description: "Cloudflare Tunnel" }
+  - { name: crowdsec, uid: 3204, group: security, category: Security, description: "CrowdSec IPS" }
+  - { name: smallstep, uid: 3205, group: security, category: Security, description: "Smallstep CA PKI" }
+  - { name: wazuh, uid: 3206, group: security, category: Security, description: "Wazuh SIEM/HIDS" }
+  - { name: tarpit, uid: 3207, group: security, category: Security, description: "AI Scraper Tar Pit" }
+  - { name: honeypot, uid: 3208, group: security, category: Security, description: "Security Honeypot" }
+
+  # Web Services (4 users)
+  - { name: bookstack, uid: 3300, group: web, category: Web, description: "BookStack Wiki" }
+  - { name: freshrss, uid: 3301, group: web, category: Web, description: "FreshRSS" }
+  - { name: homepage, uid: 3302, group: web, category: Web, description: "Homepage Dashboard" }
+  - { name: homarr, uid: 3303, group: web, category: Web, description: "Homarr Dashboard" }
+
+  # DevOps Services (3 users)
+  - { name: gitlab, uid: 3400, group: devops, category: DevOps, description: "GitLab CE" }
+  - { name: harbor, uid: 3401, group: devops, category: DevOps, description: "Harbor Registry" }
+  - { name: awx, uid: 3402, group: devops, category: DevOps, description: "AWX Ansible" }
+
+  # Monitoring Services (12 users)
+  - { name: prometheus, uid: 3500, group: monitor, category: Monitoring, description: "Prometheus" }
+  - { name: grafana, uid: 3501, group: monitor, category: Monitoring, description: "Grafana" }
+  - { name: alertmanager, uid: 3502, group: monitor, category: Monitoring, description: "AlertManager" }
+  - { name: librenms, uid: 3503, group: monitor, category: Monitoring, description: "LibreNMS" }
+  - { name: uptimekuma, uid: 3504, group: monitor, category: Monitoring, description: "Uptime Kuma" }
+  - { name: gotify, uid: 3505, group: monitor, category: Monitoring, description: "Gotify Notify" }
+  - { name: netdata-monitoring, uid: 3506, group: monitor, category: Monitoring, description: "Netdata" }
+  - { name: scrutiny, uid: 3507, group: monitor, category: Monitoring, description: "Scrutiny SMART" }
+  - { name: telegraf, uid: 3508, group: monitor, category: Monitoring, description: "Telegraf Agent" }
+  - { name: graylog, uid: 3509, group: monitor, category: Monitoring, description: "Graylog Logs" }
+  - { name: network-ups-tools, uid: 3510, group: monitor, category: Monitoring, description: "Network UPS Tools" }
+  - { name: speedtest, uid: 3511, group: monitor, category: Monitoring, description: "Speedtest Tracker" }
+
+  # Container Management Services (2 users)
+  - { name: portainer, uid: 3600, group: containers, category: Containers, description: "Portainer CE" }
+  - { name: watchtower, uid: 3601, group: containers, category: Containers, description: "Watchtower" }
+
+  # Storage Services (4 users)
+  - { name: minio, uid: 3700, group: storage, category: Storage, description: "MinIO S3" }
+  - { name: rclone, uid: 3701, group: storage, category: Storage, description: "Rclone" }
+  - { name: restic, uid: 3702, group: storage, category: Storage, description: "Restic Backup" }
+  - { name: velero, uid: 3703, group: storage, category: Storage, description: "Velero K8s Backup" }
+
+  # Network Services (3 users)
+  - { name: pihole, uid: 3900, group: networking, category: Network, description: "Pi-hole DNS" }
+  - { name: technitium, uid: 3901, group: networking, category: Network, description: "Technitium DNS" }
+  - { name: chrony, uid: 3902, group: networking, category: Network, description: "Chrony NTP" }
+
+  # Automation Services (3 users)
+  - { name: homeassistant, uid: 4000, group: automation, category: Automation, description: "Home Assistant" }
+  - { name: nodered, uid: 4001, group: automation, category: Automation, description: "Node-RED" }
+  - { name: n8n, uid: 4002, group: automation, category: Automation, description: "n8n Workflow" }
+
+  # Database Services (6 users - using standard ports as UIDs)
+  - { name: postgres, uid: 5432, group: database, category: Database, description: "PostgreSQL DB" }
+  - { name: mariadb, uid: 3306, group: database, category: Database, description: "MariaDB" }
+  - { name: redis, uid: 6379, group: database, category: Database, description: "Redis Cache" }
+  - { name: mongodb, uid: 27017, group: database, category: Database, description: "MongoDB" }
+  - { name: elasticsearch, uid: 9200, group: database, category: Database, description: "Elasticsearch" }
+  - { name: influxdb, uid: 8086, group: database, category: Database, description: "InfluxDB TSDB" }
+
+# Cross-functional group memberships
+supplementary_groups:
+  # Media services that need download access
+  download_access:
+    - radarr
+    - sonarr
+    - lidarr
+    - readarr
+    - bazarr
+    - whisparr
+
+  # Download clients that need media access
+  media_access:
+    - qbittorrent
+    - sabnzbd
+
+  # Container management that needs docker access
+  container_access:
+    - portainer
+    - watchtower
+
+  # Monitoring services that need broad access
+  monitor_access:
+    - prometheus
+    - grafana
+    - telegraf
+    - netdata-monitoring
+    - wazuh
+    - crowdsec

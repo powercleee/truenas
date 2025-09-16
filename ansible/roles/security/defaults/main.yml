@@ -1,0 +1,183 @@
+---
+# TrueNAS API Configuration
+truenas_api_url: "https://{{ ansible_host }}/api/v2.0"
+truenas_api_key: "{{ lookup('env', 'TRUENAS_API_KEY') }}"
+truenas_validate_certs: false
+
+# Security Configuration Control Flags
+apply_ssh_hardening: true
+apply_network_hardening: true
+
+# SSH Hardening Configuration
+ssh_service_enabled: true
+ssh_port: 22
+ssh_allow_root: false  # Security best practice: disable root login
+ssh_password_auth: false  # Security best practice: use key-based auth only
+ssh_kerberos_auth: false
+ssh_tcp_forwarding: false  # Disable TCP forwarding for security
+ssh_compression: false  # Disable compression to prevent attacks
+ssh_weak_ciphers: []  # List of weak ciphers to allow (empty for security)
+ssh_sftp_log_level: "ERROR"
+ssh_sftp_log_facility: "AUTH"
+
+# SSH Additional Security Options
+ssh_additional_options: |
+  # SSH Security Hardening Options
+  Protocol 2
+  PermitEmptyPasswords no
+  MaxAuthTries 3
+  ClientAliveInterval 300
+  ClientAliveCountMax 2
+  UseDNS no
+  X11Forwarding no
+  AllowTcpForwarding no
+  GatewayPorts no
+  PermitTunnel no
+  MaxSessions 2
+  # Restrict SSH access to specific users (uncomment and customize)
+  # AllowUsers ansible
+  # Disable SSH for specific users
+  # DenyUsers root
+  # Strong ciphers only
+  Ciphers chacha20-poly1305@openssh.com,aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com
+  # Strong MACs only
+  MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512
+  # Strong key exchange algorithms
+  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
+
+
+# Network Security Hardening Tunables (via TrueNAS API)
+network_tunable_descriptions:
+  "net.ipv4.tcp_syncookies": "Protects against SYN flood attacks"
+  "net.ipv4.icmp_ignore_bogus_error_responses": "Ignores fake ICMP error messages"
+  "net.ipv4.icmp_echo_ignore_broadcasts": "Ignores broadcast ping requests"
+  "net.ipv4.ip_forward": "Prevents routing traffic between networks"
+  "net.ipv4.conf.all.accept_source_route": "Blocks packets that specify their own route"
+  "net.ipv4.conf.default.accept_source_route": "Blocks packets that specify their own route (default)"
+  "net.ipv4.conf.all.accept_redirects": "Blocks ICMP redirect messages"
+  "net.ipv4.conf.default.accept_redirects": "Blocks ICMP redirect messages (default)"
+  "net.ipv4.conf.all.send_redirects": "Prevents sending ICMP redirect messages"
+  "net.ipv4.conf.default.send_redirects": "Prevents sending ICMP redirect messages (default)"
+  "net.ipv4.conf.all.log_martians": "Logs packets with invalid source addresses"
+  "net.ipv4.conf.default.log_martians": "Logs packets with invalid source addresses (default)"
+  "net.ipv6.conf.all.accept_redirects": "Blocks IPv6 ICMP redirect messages"
+  "net.ipv6.conf.default.accept_redirects": "Blocks IPv6 ICMP redirect messages (default)"
+  "net.ipv6.conf.all.accept_source_route": "Blocks IPv6 packets that specify their own route"
+  "net.ipv6.conf.default.accept_source_route": "Blocks IPv6 packets that specify their own route (default)"
+
+network_security_tunables:
+  # TCP/IP stack hardening
+  "net.ipv4.tcp_syncookies": "1"                    # Protects against SYN flood attacks
+  "net.ipv4.icmp_ignore_bogus_error_responses": "1" # Ignores fake ICMP error messages
+  "net.ipv4.icmp_echo_ignore_broadcasts": "1"       # Ignores broadcast ping requests
+  "net.ipv4.ip_forward": "0"                        # Prevents routing traffic between networks
+  "net.ipv4.conf.all.accept_source_route": "0"      # Blocks packets that specify their own route
+  "net.ipv4.conf.default.accept_source_route": "0"  # Blocks packets that specify their own route (default)
+  "net.ipv4.conf.all.accept_redirects": "0"         # Blocks ICMP redirect messages
+  "net.ipv4.conf.default.accept_redirects": "0"     # Blocks ICMP redirect messages (default)
+  "net.ipv4.conf.all.send_redirects": "0"           # Prevents sending ICMP redirect messages
+  "net.ipv4.conf.default.send_redirects": "0"       # Prevents sending ICMP redirect messages (default)
+  "net.ipv4.conf.all.log_martians": "1"             # Logs packets with invalid source addresses
+  "net.ipv4.conf.default.log_martians": "1"         # Logs packets with invalid source addresses (default)
+
+  # Additional IPv6 hardening
+  "net.ipv6.conf.all.accept_redirects": "0"         # Blocks IPv6 ICMP redirect messages
+  "net.ipv6.conf.default.accept_redirects": "0"     # Blocks IPv6 ICMP redirect messages (default)
+  "net.ipv6.conf.all.accept_source_route": "0"      # Blocks IPv6 packets that specify their own route
+  "net.ipv6.conf.default.accept_source_route": "0"  # Blocks IPv6 packets that specify their own route (default)
+
+# Service Binding Configuration (Security through service isolation)
+service_bindings:
+  ssh:
+    # Bind SSH to specific interfaces only (empty = all interfaces)
+    interfaces: []  # Example: ["enp0s3"] to limit SSH to one interface
+
+  nfs:
+    # Bind NFS to specific interfaces
+    interfaces: []
+
+  smb:
+    # Bind SMB to specific interfaces
+    interfaces: []
+
+# Firewall Configuration Notes
+# TrueNAS SCALE doesn't provide native firewall API endpoints
+# These settings are documented for external firewall configuration
+firewall_rules:
+  # Basic security rules (implement via external firewall)
+  default_policy: "DROP"
+
+  allowed_services:
+    - name: "SSH"
+      port: "{{ ssh_port }}"
+      protocol: "tcp"
+      source: "trusted_networks"  # Define your trusted network ranges
+
+    - name: "HTTPS Web UI"
+      port: 443
+      protocol: "tcp"
+      source: "management_networks"
+
+    - name: "HTTP Web UI"
+      port: 80
+      protocol: "tcp"
+      source: "management_networks"
+
+  # Common ports to consider blocking
+  blocked_ports:
+    - 23    # Telnet
+    - 69    # TFTP
+    - 135   # Microsoft RPC
+    - 139   # NetBIOS
+    - 445   # SMB (unless explicitly needed)
+    - 1433  # SQL Server
+    - 3389  # RDP
+
+# Security Monitoring and Alerting
+security_monitoring:
+  # Log security events
+  log_failed_logins: true
+  log_privilege_escalation: true
+  log_network_anomalies: true
+
+  # Alert thresholds
+  max_failed_login_attempts: 5
+  max_concurrent_sessions: 10
+
+# TLS/SSL Security Settings
+tls_security:
+  # Minimum TLS version
+  min_tls_version: "1.2"
+
+  # Preferred cipher suites (for web UI and API)
+  cipher_suites:
+    - "TLS_AES_256_GCM_SHA384"
+    - "TLS_CHACHA20_POLY1305_SHA256"
+    - "TLS_AES_128_GCM_SHA256"
+    - "ECDHE-RSA-AES256-GCM-SHA384"
+    - "ECDHE-RSA-CHACHA20-POLY1305"
+
+# Certificate Management
+certificate_security:
+  # Automatically renew certificates before expiration
+  auto_renew_days: 30
+
+  # Key length for generated certificates
+  rsa_key_size: 4096
+
+  # Elliptic curve for ECDSA certificates
+  ec_curve: "prime256v1"
+
+# System Security Hardening
+system_security:
+  # Disable unnecessary services (managed outside TrueNAS API)
+  disable_unused_filesystems: true
+  disable_unused_network_protocols: true
+
+  # File system security
+  secure_tmp: true
+  secure_shm: true
+
+  # Kernel security
+  disable_core_dumps: true
+  enable_aslr: true

@@ -1,0 +1,63 @@
+---
+# Batch processing task for performance tunables
+# Processes tunables in small batches to prevent job queue saturation
+
+- name: "Process tunable batch {{ batch_number }}/{{ total_batches }}"
+  debug:
+    msg:
+      - "Processing batch {{ batch_number }} of {{ total_batches }}"
+      - "Batch size: {{ tunable_batch | length }} tunables"
+      - "Current batch: {{ tunable_batch | map(attribute='name') | list }}"
+
+# Delete existing tunables in this batch
+- name: Delete existing tunables in batch
+  include_tasks: delete_tunable.yml
+  vars:
+    tunable_to_delete: "{{ existing_tunable }}"
+  loop: "{{ existing_tunables.json }}"
+  when:
+    - existing_tunable.var in (tunable_batch | map(attribute='name') | list)
+    - existing_tunable.var in existing_tunable_names
+  loop_control:
+    loop_var: existing_tunable
+    label: "{{ existing_tunable.var }}"
+
+- name: "Throttle after deletions"
+  debug:
+    msg: "Throttling {{ throttle_delay }}s between deletion and creation"
+  when: tunable_batch | length > 0
+
+# Create new tunables in this batch
+- name: Create tunables in batch
+  include_tasks: create_tunable.yml
+  vars:
+    tunable_config: "{{ batch_tunable }}"
+  loop: "{{ tunable_batch }}"
+  when: batch_tunable.enabled | default(true)
+  loop_control:
+    loop_var: batch_tunable
+    label: "{{ batch_tunable.name }}"
+
+- name: "Throttle between batches"
+  debug:
+    msg: "Batch {{ batch_number }} completed. Throttling {{ batch_delay }}s before next batch."
+  when: batch_number < total_batches
+
+- name: "Check job queue status after batch {{ batch_number }}"
+  uri:
+    url: "{{ truenas_api_url }}/core/get_jobs"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: queue_status
+  check_mode: false
+
+- name: "Display job queue summary after batch {{ batch_number }}"
+  debug:
+    msg:
+      - "Total jobs in queue: {{ queue_status.json | length }}"
+      - "Running jobs: {{ queue_status.json | selectattr('state', 'equalto', 'RUNNING') | list | length }}"
+      - "Waiting jobs: {{ queue_status.json | selectattr('state', 'equalto', 'WAITING') | list | length }}"
+      - "Completed in last hour: {{ queue_status.json | selectattr('state', 'equalto', 'SUCCESS') | list | length }}"

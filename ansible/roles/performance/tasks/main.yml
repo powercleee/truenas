@@ -1,0 +1,118 @@
+---
+# Performance tunables configuration for TrueNAS SCALE
+# Implements delete-and-recreate strategy with job system integration
+
+- name: Display performance tuning information
+  debug:
+    msg:
+      - "Configuring performance tunables for TrueNAS SCALE"
+      - "Total tunables to configure: {{ performance_tunables | length }}"
+      - "SYSCTL tunables: {{ performance_tunables | selectattr('type', 'equalto', 'SYSCTL') | list | length }}"
+      - "ZFS tunables: {{ performance_tunables | selectattr('type', 'equalto', 'ZFS') | list | length }}"
+      - "Job timeout: {{ tunable_job_timeout }} seconds"
+      - "Using delete-and-recreate strategy for idempotency"
+  tags: always
+
+- name: Get existing tunables from TrueNAS
+  uri:
+    url: "{{ truenas_api_url }}/tunable"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: existing_tunables
+  check_mode: false
+  tags: always
+
+- name: Create list of existing tunable names
+  set_fact:
+    existing_tunable_names: "{{ existing_tunables.json | map(attribute='var') | list }}"
+  tags: always
+
+- name: Display existing tunables summary
+  debug:
+    msg:
+      - "Found {{ existing_tunables.json | length }} existing tunables"
+      - "Performance tunables already present: {{ performance_tunables | map(attribute='name') | intersect(existing_tunable_names) | list | length }}"
+      - "New tunables to create: {{ performance_tunables | map(attribute='name') | difference(existing_tunable_names) | list | length }}"
+  tags: always
+
+# Process tunables in batches to prevent job queue saturation
+- name: Calculate batch processing parameters
+  set_fact:
+    filtered_tunables: "{{ performance_tunables | selectattr('enabled', 'equalto', true) | list }}"
+    batch_size: "{{ tunable_batch_size | default(5) }}"
+    throttle_delay: "{{ tunable_throttle_delay | default(10) }}"
+    batch_delay: "{{ tunable_batch_delay | default(30) }}"
+
+- name: Filter tunables for test mode
+  set_fact:
+    filtered_tunables: "{{ filtered_tunables | selectattr('name', 'equalto', test_tunable_name) | list }}"
+  when: test_tunable_name is defined
+
+- name: Calculate total batches
+  set_fact:
+    total_batches: "{{ (filtered_tunables | length / batch_size | int) | round(0, 'ceil') | int }}"
+
+- name: Display batch processing information
+  debug:
+    msg:
+      - "Processing {{ filtered_tunables | length }} tunables in {{ total_batches }} batches"
+      - "Batch size: {{ batch_size }} tunables per batch"
+      - "Throttle delay: {{ throttle_delay }}s between operations"
+      - "Batch delay: {{ batch_delay }}s between batches"
+      - "Estimated total time: {{ (total_batches | int * batch_delay | int + filtered_tunables | length * throttle_delay | int) / 60 | round(1) }} minutes"
+
+# Process tunables in batches
+- name: Process tunable batches
+  include_tasks: batch_tunables.yml
+  vars:
+    tunable_batch: "{{ filtered_tunables[batch_start_idx:batch_end_idx] }}"
+    batch_number: "{{ (batch_index / (batch_size | int)) | int + 1 }}"
+    batch_start_idx: "{{ batch_index | int }}"
+    batch_end_idx: "{{ [batch_index | int + batch_size | int, filtered_tunables | length] | min }}"
+  loop: "{{ range(0, filtered_tunables | length, batch_size | int) | list }}"
+  loop_control:
+    loop_var: batch_index
+  when: filtered_tunables | length > 0
+  tags:
+    - create_tunables
+
+- name: Get final tunables state
+  uri:
+    url: "{{ truenas_api_url }}/tunable"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: final_tunables
+  check_mode: false
+  tags: always
+
+- name: Display performance tuning completion summary
+  debug:
+    msg:
+      - "Performance tuning configuration completed successfully!"
+      - "Total tunables configured: {{ final_tunables.json | length }}"
+      - "Performance tunables now active: {{ final_tunables.json | selectattr('var', 'in', performance_tunables | map(attribute='name') | list) | list | length }}"
+      - "SYSCTL tunables: {{ final_tunables.json | selectattr('type', 'equalto', 'SYSCTL') | selectattr('var', 'in', performance_tunables | map(attribute='name') | list) | list | length }}"
+      - "ZFS tunables: {{ final_tunables.json | selectattr('type', 'equalto', 'ZFS') | selectattr('var', 'in', performance_tunables | map(attribute='name') | list) | list | length }}"
+      - ""
+      - "Important Notes:"
+      - "1. SYSCTL tunables take effect immediately"
+      - "2. ZFS tunables may require a reboot to fully take effect"
+      - "3. Monitor system performance after applying these changes"
+      - "4. All tunables are optimized for 192GB RAM and 10GbE networking"
+      - "5. Container workloads should see improved performance"
+  tags: always
+
+- name: Generate performance tuning report
+  template:
+    src: performance_report.j2
+    dest: /tmp/truenas_performance_report.txt
+    mode: '0644'
+  vars:
+    configured_tunables: "{{ final_tunables.json | selectattr('var', 'in', performance_tunables | map(attribute='name') | list) | list }}"
+  tags: always

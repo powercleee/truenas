@@ -35,8 +35,12 @@ vault/
 # Configuration with Sensitive Data
 *production*
 *staging*
-*config.yml
-*config.yaml
+ansible/inventories/*config.yml
+ansible/inventories/*config.yaml
+ansible/group_vars/*config.yml
+ansible/group_vars/*config.yaml
+ansible/host_vars/*config.yml
+ansible/host_vars/*config.yaml
 ansible/inventories/production*
 ansible/inventories/staging*
 ansible/group_vars/production*

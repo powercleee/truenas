@@ -1,0 +1,66 @@
+---
+# Create tunable task with job monitoring
+# This task handles the creation of a single tunable and waits for completion
+
+- name: "Create tunable: {{ tunable_config.name }}"
+  uri:
+    url: "{{ truenas_api_url }}/tunable"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      var: "{{ tunable_config.name }}"
+      value: "{{ tunable_config.value }}"
+      type: "{{ tunable_config.type }}"
+      comment: "{{ tunable_config.comment | default('Performance tunable managed by Ansible') }}"
+      enabled: "{{ tunable_config.enabled | default(true) }}"
+    status_code: [200, 201]
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: create_result
+  failed_when: false
+
+- name: "Handle job monitoring for tunable creation: {{ tunable_config.name }}"
+  block:
+    - name: "Check if creation started a job: {{ tunable_config.name }}"
+      set_fact:
+        creation_job_id: "{{ create_result.json if (create_result.json is defined and create_result.json is number) else none }}"
+        creation_successful: "{{ create_result.status in [200, 201] }}"
+      when:
+        - create_result.status is defined
+
+    - name: "Monitor creation job completion: {{ tunable_config.name }}"
+      include_tasks: monitor_job.yml
+      vars:
+        job_id: "{{ creation_job_id }}"
+        operation_name: "create tunable {{ tunable_config.name }} ({{ tunable_config.type }})"
+      when:
+        - creation_successful | default(false)
+        - creation_job_id is defined
+        - creation_job_id is not none
+        - creation_job_id != ""
+
+  rescue:
+    - name: "Handle creation failure: {{ tunable_config.name }}"
+      debug:
+        msg:
+          - "Failed to create tunable: {{ tunable_config.name }}"
+          - "Status: {{ create_result.status | default('unknown') }}"
+          - "Error: {{ create_result.json.message | default(create_result.content | default('Unknown error')) }}"
+          - "Tunable config: {{ tunable_config }}"
+
+    - name: "Fail on creation error: {{ tunable_config.name }}"
+      fail:
+        msg: "Failed to create critical performance tunable: {{ tunable_config.name }}"
+      when:
+        - create_result.status is defined
+        - create_result.status not in [200, 201, 409]  # 409 = conflict (already exists)
+        - not ansible_check_mode
+
+# Add throttling delay after each tunable operation
+- name: "Throttle after tunable operation: {{ tunable_config.name }}"
+  command: sleep {{ tunable_throttle_delay | default(5) }}
+  when:
+    - tunable_throttle_delay is defined
+    - tunable_throttle_delay | int > 0

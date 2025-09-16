@@ -1,0 +1,144 @@
+---
+- name: Get current SSH service configuration
+  uri:
+    url: "{{ truenas_api_url }}/ssh"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: current_ssh_config
+  tags:
+    - security
+    - ssh
+    - api
+
+- name: Display current SSH configuration for review
+  debug:
+    msg:
+      - "Current SSH Configuration:"
+      - "TCP Port: {{ current_ssh_config.json.tcpport }}"
+      - "Password Auth: {{ current_ssh_config.json.passwordauth }}"
+      - "Kerberos Auth: {{ current_ssh_config.json.kerberosauth }}"
+      - "TCP Forwarding: {{ current_ssh_config.json.tcpfwd }}"
+      - "Compression: {{ current_ssh_config.json.compression }}"
+  tags:
+    - security
+    - ssh
+    - debug
+
+- name: Apply SSH hardening configuration
+  uri:
+    url: "{{ truenas_api_url }}/ssh"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      tcpport: "{{ ssh_port }}"
+      passwordauth: "{{ ssh_password_auth }}"
+      kerberosauth: "{{ ssh_kerberos_auth }}"
+      tcpfwd: "{{ ssh_tcp_forwarding }}"
+      compression: "{{ ssh_compression }}"
+      weak_ciphers: "{{ ssh_weak_ciphers }}"
+      sftp_log_level: "{{ ssh_sftp_log_level }}"
+      sftp_log_facility: "{{ ssh_sftp_log_facility }}"
+      options: "{{ ssh_additional_options }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: ssh_config_result
+  when: apply_ssh_hardening | default(true)
+  tags:
+    - security
+    - ssh
+    - api
+
+- name: Enable/Disable SSH service
+  uri:
+    url: "{{ truenas_api_url }}/service/id/11"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      enable: "{{ ssh_service_enabled }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  when: apply_ssh_hardening | default(true)
+  tags:
+    - security
+    - ssh
+    - api
+
+- name: Restart SSH service if configuration changed
+  uri:
+    url: "{{ truenas_api_url }}/service/restart"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      service: "ssh"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  when:
+    - apply_ssh_hardening | default(true)
+    - ssh_config_result is changed
+  tags:
+    - security
+    - ssh
+    - api
+
+
+- name: Apply network security hardening
+  include_tasks: network_hardening.yml
+  when: apply_network_hardening | default(true)
+  tags:
+    - security
+    - network
+    - hardening
+    - api
+
+- name: Generate SSH security report
+  template:
+    src: ssh_security_report.txt.j2
+    dest: /tmp/ssh_security_report.txt
+    mode: '0644'
+  tags:
+    - security
+    - ssh
+    - reports
+
+
+- name: Display security configuration summary
+  debug:
+    msg:
+      - "TrueNAS Security Configuration Applied:"
+      - "SSH Port: {{ ssh_port }}"
+      - "SSH Root Login: {{ 'Disabled' if not ssh_allow_root else 'Enabled' }}"
+      - "SSH Password Auth: {{ 'Disabled' if not ssh_password_auth else 'Enabled' }}"
+      - "Network Security Hardening: {{ 'Applied' if apply_network_hardening else 'Skipped' }}"
+      - ""
+      - "API-Managed Settings:"
+      - "- SSH Service: {{ truenas_api_url }}/service/id/ssh"
+      - "- Network Security Tunables: {{ truenas_api_url }}/tunable"
+      - ""
+      - "Security Reports Generated:"
+      - "- SSH Security: /tmp/ssh_security_report.txt"
+      - ""
+      - "Web UI Management:"
+      - "- SSH Config: Services → SSH"
+      - "- Network Security: System → Advanced → Sysctl"
+      - ""
+      - "✅ All configurations managed through TrueNAS middleware API"
+      - "✅ Settings visible and editable in TrueNAS Web UI"
+      - "✅ Persistent across reboots and system updates"
+      - ""
+      - "⚠️  Note: Network security hardening applied via sysctl."
+      - "   Performance tuning and firewall management can be configured separately."
+      - "   Firewall management requires external tools."
+  tags:
+    - security
+    - summary

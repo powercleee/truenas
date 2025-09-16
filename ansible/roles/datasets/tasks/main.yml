@@ -1,0 +1,326 @@
+---
+# Cleanup old datasets from service renames/removals
+- name: "Remove old app dataset for renamed service"
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/apps/' + item.old_name) | replace('/', '%2F') }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200, 404, 422]  # 404/422 = already deleted or doesn't exist
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ cleanup_old_datasets }}"
+  ignore_errors: true
+  tags:
+    - datasets
+    - cleanup
+    - api
+
+- name: "Remove old log dataset for renamed service"
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/logs/' + item.old_name) | replace('/', '%2F') }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200, 404, 422]  # 404/422 = already deleted or doesn't exist
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ cleanup_old_datasets }}"
+  ignore_errors: true
+  tags:
+    - datasets
+    - cleanup
+    - api
+
+# Main datasets (apps, containers, media, downloads, databases, backups, logs, system)
+- name: Ensure main datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset.yml
+  loop: "{{ main_datasets }}"
+  loop_control:
+    loop_var: dataset
+  tags:
+    - datasets
+    - main_datasets
+    - api
+
+# Container runtime datasets
+- name: Ensure container datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset.yml
+  loop: "{{ container_datasets }}"
+  loop_control:
+    loop_var: dataset
+  tags:
+    - datasets
+    - container_datasets
+    - api
+
+# Application datasets (one per service)
+- name: Ensure application datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_app.yml
+  loop: "{{ app_categories | dict2items | subelements('value') }}"
+  loop_control:
+    loop_var: app_item
+  tags:
+    - datasets
+    - app_datasets
+    - api
+
+# Media subdatasets
+- name: Ensure media subdatasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_media.yml
+  loop: "{{ media_subdatasets }}"
+  loop_control:
+    loop_var: dataset
+  tags:
+    - datasets
+    - media_datasets
+    - api
+
+# Download subdatasets
+- name: Ensure download subdatasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_downloads.yml
+  loop: "{{ download_subdatasets }}"
+  loop_control:
+    loop_var: dataset
+  tags:
+    - datasets
+    - download_datasets
+    - api
+
+# Database datasets
+- name: Ensure database datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_database.yml
+  loop: "{{ database_datasets }}"
+  loop_control:
+    loop_var: dataset
+  tags:
+    - datasets
+    - database_datasets
+    - api
+
+# Backup subdatasets
+- name: Ensure backup subdatasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_backup.yml
+  loop: "{{ backup_subdatasets }}"
+  loop_control:
+    loop_var: dataset
+  tags:
+    - datasets
+    - backup_datasets
+    - api
+
+# Log datasets for all services
+- name: Ensure log datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset_log.yml
+  loop: "{{ all_services + system_logs }}"
+  loop_control:
+    loop_var: service_name
+  tags:
+    - datasets
+    - log_datasets
+    - api
+
+# System datasets
+- name: Ensure system datasets with properties via TrueNAS API
+  include_tasks: ensure_dataset.yml
+  loop: "{{ system_datasets }}"
+  loop_control:
+    loop_var: dataset
+  tags:
+    - datasets
+    - system_datasets
+    - api
+
+# Special recordsize adjustments
+- name: Apply special recordsize adjustments via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ item.dataset | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      recordsize: "{{ item.recordsize }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ special_recordsizes }}"
+  register: special_recordsize_results
+  tags:
+    - datasets
+    - special_adjustments
+    - api
+
+# Permissions (after users are created)
+- name: Set permissions for application directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "/mnt/{{ zfs_pool }}/apps/{{ item.1 }}"
+      mode: "755"
+      user: "{{ item.1 }}"
+      group: "{{ item.0.key }}"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ app_categories | dict2items | subelements('value') }}"
+  register: app_permission_results
+  tags:
+    - datasets
+    - permissions
+    - post_users
+    - api
+
+- name: Set permissions for database directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+      mode: "700"
+      user: "{{ item.owner }}"
+      group: "{{ item.group }}"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ database_datasets }}"
+  when: item.owner is defined and item.group is defined
+  register: database_permission_results
+  tags:
+    - datasets
+    - permissions
+    - database_permissions
+    - api
+
+- name: Set permissions for media directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+      mode: "775"
+      user: "plex"
+      group: "media"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ media_subdatasets }}"
+  register: media_permission_results
+  tags:
+    - datasets
+    - permissions
+    - media_permissions
+    - api
+
+- name: Set permissions for download directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "{{ item.name | replace(zfs_pool, '/mnt/' + zfs_pool) }}"
+      mode: "775"
+      user: "qbittorrent"
+      group: "download"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ download_subdatasets }}"
+  register: download_permission_results
+  tags:
+    - datasets
+    - permissions
+    - download_permissions
+    - api
+
+- name: Set permissions for log directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "/mnt/{{ zfs_pool }}/logs/{{ item }}"
+      mode: "755"
+      user: "{{ item }}"
+      group: "monitor"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ all_services }}"
+  register: log_permission_results
+  tags:
+    - datasets
+    - permissions
+    - log_permissions
+    - api
+
+- name: Set permissions for system log directories via TrueNAS API
+  uri:
+    url: "{{ truenas_api_url }}/filesystem/setperm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      path: "/mnt/{{ zfs_pool }}/logs/{{ item }}"
+      mode: "755"
+      user: "root"
+      group: "monitor"
+      options:
+        stripacl: true
+        recursive: false
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  loop: "{{ system_logs }}"
+  register: system_log_permission_results
+  tags:
+    - datasets
+    - permissions
+    - system_log_permissions
+    - api
+
+- name: Display TrueNAS API dataset creation summary
+  debug:
+    msg:
+      - "Dataset creation completed via TrueNAS API"
+      - "Main datasets: {{ main_datasets | length }}"
+      - "Container datasets: {{ container_datasets | length }}"
+      - "Application datasets: {{ app_categories | dict2items | subelements('value') | length }}"
+      - "Media datasets: {{ media_subdatasets | length }}"
+      - "Download datasets: {{ download_subdatasets | length }}"
+      - "Database datasets: {{ database_datasets | length }}"
+      - "Backup datasets: {{ backup_subdatasets | length }}"
+      - "Log datasets: {{ (all_services + system_logs) | length }}"
+      - "System datasets: {{ system_datasets | length }}"
+      - "Check TrueNAS Web UI > Storage > Pools to verify datasets"
+  tags:
+    - datasets
+    - summary

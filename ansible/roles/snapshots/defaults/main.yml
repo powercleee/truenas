@@ -1,0 +1,143 @@
+---
+# Default ZFS pool name
+zfs_pool: tank
+
+# TrueNAS API Configuration
+truenas_api_url: "https://{{ ansible_host }}/api/v2.0"
+truenas_api_key: "{{ lookup('env', 'TRUENAS_API_KEY') }}"
+truenas_validate_certs: false
+
+# Snapshot configuration method - now using TrueNAS API exclusively
+snapshot_method: truenas_api
+
+# TrueNAS SCALE Snapshot Tasks Configuration
+truenas_snapshot_tasks:
+  - name: "Critical-Databases"
+    dataset: "{{ zfs_pool }}/databases"
+    recursive: true
+    schedule:
+      minute: "*/15"
+      hour: "*"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 24
+    lifetime_unit: "HOUR"
+    naming_schema: "critical-%Y%m%d-%H%M"
+    allow_empty: false
+    enabled: true
+
+  - name: "Important-Apps"
+    dataset: "{{ zfs_pool }}/apps"
+    recursive: false
+    schedule:
+      minute: "0"
+      hour: "*/4"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 7
+    lifetime_unit: "DAY"
+    naming_schema: "apps-%Y%m%d-%H%M"
+    allow_empty: false
+    enabled: true
+
+  - name: "Media-Weekly"
+    dataset: "{{ zfs_pool }}/media"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "3"
+      dom: "*"
+      month: "*"
+      dow: "0"
+    lifetime_value: 4
+    lifetime_unit: "WEEK"
+    naming_schema: "media-%Y%m%d-%H%M"
+    allow_empty: true
+    enabled: true
+
+  - name: "Logs-Daily"
+    dataset: "{{ zfs_pool }}/logs"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "2"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 7
+    lifetime_unit: "DAY"
+    naming_schema: "logs-%Y%m%d-%H%M"
+    allow_empty: true
+    enabled: true
+
+  - name: "System-Config"
+    dataset: "{{ zfs_pool }}/system"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "1"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 30
+    lifetime_unit: "DAY"
+    naming_schema: "system-%Y%m%d-%H%M"
+    allow_empty: false
+    enabled: true
+
+  - name: "Containers-Daily"
+    dataset: "{{ zfs_pool }}/containers"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "4"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 7
+    lifetime_unit: "DAY"
+    naming_schema: "containers-%Y%m%d-%H%M"
+    allow_empty: true
+    enabled: true
+
+  - name: "Downloads-Quick"
+    dataset: "{{ zfs_pool }}/downloads"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "*/6"
+      dom: "*"
+      month: "*"
+      dow: "*"
+    lifetime_value: 3
+    lifetime_unit: "DAY"
+    naming_schema: "downloads-%Y%m%d-%H%M"
+    allow_empty: true
+    enabled: true
+
+  - name: "Backups-Weekly"
+    dataset: "{{ zfs_pool }}/backups"
+    recursive: true
+    schedule:
+      minute: "0"
+      hour: "5"
+      dom: "*"
+      month: "*"
+      dow: "1"
+    lifetime_value: 8
+    lifetime_unit: "WEEK"
+    naming_schema: "backups-%Y%m%d-%H%M"
+    allow_empty: true
+    enabled: true
+
+# Complete snapshot coverage for all main datasets via TrueNAS API:
+# - databases: Every 15 minutes, 24 hour retention (critical data)
+# - apps: Every 4 hours, 7 day retention (application data)
+# - media: Weekly on Sunday, 4 week retention (large media files)
+# - logs: Daily at 2 AM, 7 day retention (log files)
+# - system: Daily at 1 AM, 30 day retention (system config)
+# - containers: Daily at 4 AM, 7 day retention (container runtime)
+# - downloads: Every 6 hours, 3 day retention (temporary downloads)
+# - backups: Weekly on Monday, 8 week retention (backup data)

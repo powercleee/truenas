@@ -1,43 +1,91 @@
 ---
 - name: TrueNAS SCALE Infrastructure Setup
-  hosts: truenas
-  become: true
-  gather_facts: true
+  hosts: localhost
+  become: false
+  gather_facts: false
+  connection: local
   vars:
-    zfs_pool: "{{ hostvars[inventory_hostname]['zfs_pool'] | default('tank') }}"
+    zfs_pool: "{{ hostvars[groups['truenas'][0]]['zfs_pool'] | default('tank') }}"
+    ansible_host: "{{ hostvars[groups['truenas'][0]]['ansible_host'] }}"
 
   pre_tasks:
-    - name: Verify ZFS pool exists
-      command: zpool status {{ zfs_pool }}
-      register: pool_status
-      failed_when: pool_status.rc != 0
-      changed_when: false
+    - name: Verify TrueNAS API connectivity
+      uri:
+        url: "{{ truenas_api_url }}/system/info"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        status_code: [200]
+        validate_certs: "{{ truenas_validate_certs }}"
+      register: api_test
+      check_mode: false  # Always run this task even in check mode
+      tags: always
+
+    - name: Get all ZFS pools via TrueNAS API
+      uri:
+        url: "{{ truenas_api_url }}/pool"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        status_code: [200]
+        validate_certs: "{{ truenas_validate_certs }}"
+      register: all_pools
+      check_mode: false  # Always run this task even in check mode
+      tags: always
+
+    - name: Verify target ZFS pool exists
+      set_fact:
+        pool_exists: "{{ zfs_pool in (all_pools.json | map(attribute='name') | list) }}"
+      tags: always
+
+    - name: Fail if target pool does not exist
+      fail:
+        msg: "ZFS pool '{{ zfs_pool }}' not found. Available pools: {{ all_pools.json | map(attribute='name') | join(', ') }}"
+      when: not pool_exists
       tags: always
 
     - name: Display setup information
       debug:
         msg:
-          - "Starting TrueNAS SCALE setup for host: {{ inventory_hostname }}"
-          - "Target ZFS pool: {{ zfs_pool }}"
+          - "Starting TrueNAS SCALE setup via API"
+          - "TrueNAS Host: {{ ansible_host }}"
+          - "TrueNAS Version: {{ api_test.json.version | default('Unknown (check mode)') }}"
+          - "Target ZFS pool: {{ zfs_pool }} ✅ VERIFIED"
+          - "Available pools: {{ all_pools.json | map(attribute='name') | join(', ') }}"
           - "Total services to configure: 61"
+          - "Running from: localhost"
+          - "Mode: {{ 'CHECK MODE - No changes will be made' if ansible_check_mode else 'LIVE MODE - Changes will be applied' }}"
       tags: always
 
   roles:
-    - role: truenas_users
+    - role: users
       tags:
         - users
         - setup
 
-    - role: truenas_datasets
+    - role: datasets
       tags:
         - datasets
         - zfs
         - setup
 
-    - role: truenas_snapshots
+    - role: snapshots
       tags:
         - snapshots
         - backup
+        - setup
+
+    - role: security
+      tags:
+        - security
+        - hardening
+        - setup
+
+    - role: performance
+      tags:
+        - performance
+        - tuning
+        - optimization
         - setup
 
   post_tasks:
@@ -45,22 +93,29 @@
       debug:
         msg:
           - "TrueNAS SCALE infrastructure setup completed successfully!"
+          - "TrueNAS Host: {{ ansible_host }}"
           - "Users created: {{ service_users | length }} service users across {{ service_groups | length }} groups"
           - "Datasets created: Main datasets, application datasets for all {{ service_users | length }} services"
           - "Snapshots configured: {{ snapshot_method | title }} snapshot management enabled"
+          - "Security hardening applied: SSH hardening, network security tunables"
+          - "Performance tuning applied: {{ performance_tunables | length }} system tunables optimized for containers"
           - ""
           - "Next steps:"
           - "1. Deploy your containerized services using the created users and datasets"
           - "2. Configure application-specific permissions as needed"
           - "3. Monitor snapshot operations and adjust retention policies if required"
-          - "4. Review generated reference files in /root/ (users_groups_reference.txt, docker_users.env)"
+          - "4. Review generated reference files in /tmp/ (users_groups_reference.txt, docker_users.env)"
+          - "5. Review security reports in /tmp/ (ssh_security_report.txt)"
+          - "6. Review performance tuning report in /tmp/ (truenas_performance_report.txt)"
+          - "7. Implement external firewall rules as documented in security reports"
+          - "8. Monitor memory usage between containers and ZFS ARC"
+          - "9. Reboot system when convenient to activate all ZFS performance parameters"
+          - "10. All resources are visible in TrueNAS Web UI"
       tags: always
 
     - name: Generate deployment summary
       template:
         src: deployment_summary.md.j2
-        dest: /root/truenas_deployment_summary.md
-        owner: root
-        group: root
+        dest: /tmp/truenas_deployment_summary.md
         mode: '0644'
       tags: always

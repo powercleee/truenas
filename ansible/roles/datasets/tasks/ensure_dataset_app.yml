@@ -1,0 +1,34 @@
+---
+- name: "Create or update application dataset {{ zfs_pool }}/apps/{{ app_item.1 }} with properties"
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ zfs_pool }}/apps/{{ app_item.1 }}"
+      type: "FILESYSTEM"
+      recordsize: "128K"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+    status_code: [200, 422]  # 200 = created, 422 = already exists
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: app_dataset_result
+
+- name: "Update properties for existing application dataset {{ zfs_pool }}/apps/{{ app_item.1 }}"
+  uri:
+    url: "{{ truenas_api_url }}/pool/dataset/id/{{ (zfs_pool + '/apps/' + app_item.1) | replace('/', '%2F') }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      recordsize: "128K"
+      compression: "{{ default_compression }}"
+      atime: "{{ default_atime }}"
+    status_code: [200]
+    validate_certs: "{{ truenas_validate_certs }}"
+  when: app_dataset_result.status == 422
