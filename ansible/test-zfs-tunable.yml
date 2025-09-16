@@ -1,0 +1,53 @@
+---
+- name: Test ZFS Tunable with Extended Timeout
+  hosts: localhost
+  become: false
+  gather_facts: true
+  connection: local
+  vars:
+    truenas_api_key: "{{ lookup('env', 'TRUENAS_API_KEY') }}"
+
+    # Override job monitoring for ZFS tunables
+    tunable_job_timeout: 600  # 10 minutes for ZFS
+    tunable_poll_interval: 10  # 10 second intervals
+
+    # Test with a small ZFS tunable
+    performance_tunables:
+      - name: "zfs_admin_snapshot"
+        type: "ZFS"
+        value: "1"
+        description: "Allow non-root snapshot administration for containers."
+        comment: "ZFS: Admin snapshot enable (test)"
+        enabled: true
+
+  pre_tasks:
+    - name: Check TRUENAS_API_KEY environment variable
+      fail:
+        msg: "TRUENAS_API_KEY environment variable is not set"
+      when: truenas_api_key == ""
+
+    - name: Display test information
+      debug:
+        msg:
+          - "Testing ZFS tunable with extended timeout"
+          - "TrueNAS Host: {{ ansible_host }}"
+          - "Test tunable: {{ performance_tunables[0].name }}"
+          - "Type: {{ performance_tunables[0].type }}"
+          - "Value: {{ performance_tunables[0].value }}"
+          - "Job timeout: {{ tunable_job_timeout }} seconds"
+          - "Poll interval: {{ tunable_poll_interval }} seconds"
+
+  roles:
+    - role: performance
+      tags:
+        - performance
+        - zfs
+        - test
+
+  post_tasks:
+    - name: Display test completion
+      debug:
+        msg:
+          - "ZFS tunable test completed!"
+          - "Check /tmp/truenas_performance_report.txt for details"
+          - "Verify tunable was created in TrueNAS Web UI"

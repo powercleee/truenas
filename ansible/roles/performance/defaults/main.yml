@@ -1,0 +1,537 @@
+---
+# Performance role default variables
+# These tunables are optimized for TrueNAS SCALE with 192GB RAM, 10GbE networking,
+# and container workloads. All values have been validated via the troubleshooting script.
+
+# Job monitoring settings
+tunable_job_timeout: 300  # 5 minutes timeout for tunable creation jobs
+tunable_poll_interval: 5  # Poll every 5 seconds for job completion
+zfs_job_timeout: 600      # 10 minutes timeout for ZFS tunable jobs (they take longer)
+zfs_poll_interval: 10     # Poll every 10 seconds for ZFS jobs
+
+# Batch processing settings to prevent job queue saturation
+tunable_batch_size: 5           # Process 5 tunables per batch
+tunable_throttle_delay: 10      # Wait 10 seconds between individual operations
+tunable_batch_delay: 30         # Wait 30 seconds between batches
+tunable_max_queue_size: 10      # Skip batch if queue has more than 10 jobs
+
+# Performance tunables configuration
+performance_tunables:
+  # SYSCTL Tunables for memory management
+  - name: "vm.swappiness"
+    type: "SYSCTL"
+    value: "1"
+    description: "Minimizes swap usage with 192GB RAM available. Containers perform better with memory-resident operations."
+    comment: "VM: Minimize swap usage for containers"
+    enabled: true
+
+  - name: "vm.vfs_cache_pressure"
+    type: "SYSCTL"
+    value: "50"
+    description: "Balanced inode/dentry cache retention. Default 100 is too aggressive for container workloads."
+    comment: "VM: Balance VFS cache pressure"
+    enabled: true
+
+  - name: "vm.dirty_ratio"
+    type: "SYSCTL"
+    value: "10"
+    description: "Percentage of system memory that can be filled with dirty pages before forcing writes. Conservative for data integrity."
+    comment: "VM: Dirty page ratio for data integrity"
+    enabled: true
+
+  - name: "vm.dirty_background_ratio"
+    type: "SYSCTL"
+    value: "5"
+    description: "Start background writeback at 5% dirty memory (~9.6GB with your RAM)."
+    comment: "VM: Background dirty page writeback"
+    enabled: true
+
+  - name: "vm.dirty_expire_centisecs"
+    type: "SYSCTL"
+    value: "3000"
+    description: "Dirty pages older than 30 seconds get written. Balances performance with data safety."
+    comment: "VM: Dirty page expiration time"
+    enabled: true
+
+  - name: "vm.min_free_kbytes"
+    type: "SYSCTL"
+    value: "1048576"
+    description: "Reserve 1GB minimum free memory for critical allocations and burst operations."
+    comment: "VM: Reserve memory for critical allocations"
+    enabled: true
+
+  # SYSCTL Tunables for IPC
+  - name: "kernel.shmmax"
+    type: "SYSCTL"
+    value: "103079215104"
+    description: "~96GB (half of total RAM) for shared memory segments used by databases in containers."
+    comment: "Kernel: Shared memory maximum size"
+    enabled: true
+
+  - name: "kernel.shmall"
+    type: "SYSCTL"
+    value: "25165824"
+    description: "Total shared memory pages (96GB / 4KB page size)."
+    comment: "Kernel: Total shared memory pages"
+    enabled: true
+
+  - name: "kernel.sem"
+    type: "SYSCTL"
+    value: "250 32000 100 512"
+    description: "Semaphore parameters for container IPC: SEMMSL SEMMNS SEMOPM SEMMNI."
+    comment: "Kernel: Semaphore parameters for containers"
+    enabled: true
+
+  # SYSCTL Tunables for networking
+  - name: "net.core.rmem_max"
+    type: "SYSCTL"
+    value: "134217728"
+    description: "128MB max receive buffer for 10GbE performance."
+    comment: "Network: Maximum receive buffer size"
+    enabled: true
+
+  - name: "net.core.wmem_max"
+    type: "SYSCTL"
+    value: "134217728"
+    description: "128MB max send buffer for 10GbE performance."
+    comment: "Network: Maximum send buffer size"
+    enabled: true
+
+  - name: "net.core.rmem_default"
+    type: "SYSCTL"
+    value: "33554432"
+    description: "32MB default receive buffer."
+    comment: "Network: Default receive buffer size"
+    enabled: true
+
+  - name: "net.core.wmem_default"
+    type: "SYSCTL"
+    value: "33554432"
+    description: "32MB default send buffer."
+    comment: "Network: Default send buffer size"
+    enabled: true
+
+  - name: "net.core.netdev_max_backlog"
+    type: "SYSCTL"
+    value: "30000"
+    description: "Increased packet backlog for 10GbE interfaces under load."
+    comment: "Network: Packet backlog for 10GbE"
+    enabled: true
+
+  - name: "net.core.somaxconn"
+    type: "SYSCTL"
+    value: "8192"
+    description: "Maximum socket connection queue for container services."
+    comment: "Network: Maximum socket connections"
+    enabled: true
+
+  - name: "net.ipv4.tcp_rmem"
+    type: "SYSCTL"
+    value: "4096 87380 134217728"
+    description: "TCP receive buffer: min, default, max (4KB, 85KB, 128MB)."
+    comment: "Network: TCP receive buffer tuning"
+    enabled: true
+
+  - name: "net.ipv4.tcp_wmem"
+    type: "SYSCTL"
+    value: "4096 65536 134217728"
+    description: "TCP send buffer: min, default, max (4KB, 64KB, 128MB)."
+    comment: "Network: TCP send buffer tuning"
+    enabled: true
+
+  - name: "net.ipv4.tcp_congestion_control"
+    type: "SYSCTL"
+    value: "bbr"
+    description: "Google's BBR congestion control for better 10GbE utilization."
+    comment: "Network: BBR congestion control"
+    enabled: true
+
+  - name: "net.ipv4.tcp_mtu_probing"
+    type: "SYSCTL"
+    value: "1"
+    description: "Enable MTU probing for jumbo frames if supported."
+    comment: "Network: MTU probing for jumbo frames"
+    enabled: true
+
+  - name: "net.ipv4.tcp_timestamps"
+    type: "SYSCTL"
+    value: "1"
+    description: "Required for window scaling and PAWS."
+    comment: "Network: TCP timestamps"
+    enabled: true
+
+  - name: "net.ipv4.tcp_sack"
+    type: "SYSCTL"
+    value: "1"
+    description: "Selective acknowledgments for better recovery."
+    comment: "Network: TCP selective acknowledgments"
+    enabled: true
+
+  - name: "net.ipv4.tcp_window_scaling"
+    type: "SYSCTL"
+    value: "1"
+    description: "Enable RFC1323 window scaling for 10GbE."
+    comment: "Network: TCP window scaling"
+    enabled: true
+
+  - name: "net.ipv4.tcp_no_metrics_save"
+    type: "SYSCTL"
+    value: "1"
+    description: "Don't cache TCP metrics between connections."
+    comment: "Network: Disable TCP metrics caching"
+    enabled: true
+
+  - name: "net.ipv4.tcp_moderate_rcvbuf"
+    type: "SYSCTL"
+    value: "1"
+    description: "Auto-tune receive buffers."
+    comment: "Network: Auto-tune receive buffers"
+    enabled: true
+
+  - name: "net.ipv4.ip_local_port_range"
+    type: "SYSCTL"
+    value: "32768 65000"
+    description: "Expanded ephemeral port range for containers."
+    comment: "Network: Ephemeral port range for containers"
+    enabled: true
+
+  - name: "net.ipv4.tcp_fin_timeout"
+    type: "SYSCTL"
+    value: "30"
+    description: "Reduce TIME_WAIT duration from 60 to 30 seconds."
+    comment: "Network: TCP FIN timeout reduction"
+    enabled: true
+
+  - name: "net.ipv4.tcp_keepalive_time"
+    type: "SYSCTL"
+    value: "600"
+    description: "Start keepalive after 10 minutes of idle."
+    comment: "Network: TCP keepalive time"
+    enabled: true
+
+  - name: "net.ipv4.tcp_keepalive_intvl"
+    type: "SYSCTL"
+    value: "30"
+    description: "Keepalive probe interval."
+    comment: "Network: TCP keepalive interval"
+    enabled: true
+
+  - name: "net.ipv4.tcp_keepalive_probes"
+    type: "SYSCTL"
+    value: "5"
+    description: "Number of keepalive probes before connection drop."
+    comment: "Network: TCP keepalive probes"
+    enabled: true
+
+  - name: "net.ipv4.tcp_tw_reuse"
+    type: "SYSCTL"
+    value: "1"
+    description: "Reuse TIME_WAIT sockets for new connections."
+    comment: "Network: TIME_WAIT socket reuse"
+    enabled: true
+
+  - name: "net.ipv4.conf.all.rp_filter"
+    type: "SYSCTL"
+    value: "1"
+    description: "Reverse path filtering for security."
+    comment: "Network: Reverse path filtering"
+    enabled: true
+
+  - name: "net.ipv4.conf.default.rp_filter"
+    type: "SYSCTL"
+    value: "1"
+    description: "Default reverse path filtering."
+    comment: "Network: Default reverse path filtering"
+    enabled: true
+
+  - name: "net.ipv4.neigh.default.gc_thresh1"
+    type: "SYSCTL"
+    value: "2048"
+    description: "ARP cache minimum size for container networking."
+    comment: "Network: ARP cache minimum size"
+    enabled: true
+
+  - name: "net.ipv4.neigh.default.gc_thresh2"
+    type: "SYSCTL"
+    value: "4096"
+    description: "ARP cache soft maximum."
+    comment: "Network: ARP cache soft maximum"
+    enabled: true
+
+  - name: "net.ipv4.neigh.default.gc_thresh3"
+    type: "SYSCTL"
+    value: "8192"
+    description: "ARP cache hard maximum."
+    comment: "Network: ARP cache hard maximum"
+    enabled: true
+
+  # SYSCTL Tunables for filesystem
+  - name: "fs.file-max"
+    type: "SYSCTL"
+    value: "2097152"
+    description: "Maximum file handles for containers and services."
+    comment: "Filesystem: Maximum file handles"
+    enabled: true
+
+  - name: "fs.aio-max-nr"
+    type: "SYSCTL"
+    value: "1048576"
+    description: "Maximum async I/O operations for databases."
+    comment: "Filesystem: Maximum async I/O operations"
+    enabled: true
+
+  - name: "fs.inotify.max_user_watches"
+    type: "SYSCTL"
+    value: "524288"
+    description: "Inotify watches for container file monitoring."
+    comment: "Filesystem: Inotify watches for containers"
+    enabled: true
+
+  - name: "fs.inotify.max_user_instances"
+    type: "SYSCTL"
+    value: "8192"
+    description: "Inotify instances for containers."
+    comment: "Filesystem: Inotify instances for containers"
+    enabled: true
+
+  # Additional network performance tunables
+  - name: "net.core.netdev_budget"
+    type: "SYSCTL"
+    value: "600"
+    description: "Packet processing budget per CPU per NAPI poll cycle for 10GbE."
+    comment: "Network: Packet processing budget"
+    enabled: true
+
+  - name: "net.core.netdev_budget_usecs"
+    type: "SYSCTL"
+    value: "8000"
+    description: "Maximum time (microseconds) for packet processing per poll cycle."
+    comment: "Network: Packet processing time limit"
+    enabled: true
+
+  - name: "net.ipv4.tcp_adv_win_scale"
+    type: "SYSCTL"
+    value: "2"
+    description: "TCP receive buffer space for application (1/2^n, so 2 = 25% for app)."
+    comment: "Network: TCP window scaling for applications"
+    enabled: true
+
+  # ZFS Module Parameters for performance optimization
+  - name: "zfs_arc_max"
+    type: "ZFS"
+    value: "164987617689"
+    description: "~153GB (80% of RAM). Leaves 38GB for containers and system."
+    comment: "ZFS: Maximum ARC size"
+    enabled: true
+
+  - name: "zfs_arc_min"
+    type: "ZFS"
+    value: "8589934592"
+    description: "8GB minimum ARC size for consistent performance."
+    comment: "ZFS: Minimum ARC size"
+    enabled: true
+
+
+  - name: "zfs_arc_dnode_limit"
+    type: "ZFS"
+    value: "16498761768"
+    description: "~15GB (10% of arc_max) for dnode caching."
+    comment: "ZFS: ARC dnode limit"
+    enabled: true
+
+  - name: "zfs_arc_sys_free"
+    type: "ZFS"
+    value: "2147483648"
+    description: "Keep 2GB RAM free for system stability."
+    comment: "ZFS: ARC system free memory"
+    enabled: true
+
+  - name: "zfs_dirty_data_max"
+    type: "ZFS"
+    value: "8589934592"
+    description: "8GB max dirty data before throttling writes."
+    comment: "ZFS: Maximum dirty data"
+    enabled: true
+
+  - name: "zfs_dirty_data_max_percent"
+    type: "ZFS"
+    value: "10"
+    description: "10% of RAM can be dirty data."
+    comment: "ZFS: Dirty data percentage"
+    enabled: true
+
+  - name: "zfs_txg_timeout"
+    type: "ZFS"
+    value: "5"
+    description: "Transaction group timeout in seconds."
+    comment: "ZFS: Transaction group timeout"
+    enabled: true
+
+  - name: "zfs_vdev_async_read_max_active"
+    type: "ZFS"
+    value: "16"
+    description: "Async read operations per vdev."
+    comment: "ZFS: Async read operations"
+    enabled: true
+
+  - name: "zfs_vdev_async_write_max_active"
+    type: "ZFS"
+    value: "16"
+    description: "Async write operations per vdev."
+    comment: "ZFS: Async write operations"
+    enabled: true
+
+  - name: "zfs_vdev_sync_read_max_active"
+    type: "ZFS"
+    value: "16"
+    description: "Sync read operations per vdev."
+    comment: "ZFS: Sync read operations"
+    enabled: true
+
+  - name: "zfs_vdev_sync_write_max_active"
+    type: "ZFS"
+    value: "16"
+    description: "Sync write operations per vdev."
+    comment: "ZFS: Sync write operations"
+    enabled: true
+
+  - name: "zfs_vdev_scrub_max_active"
+    type: "ZFS"
+    value: "3"
+    description: "Scrub I/O operations to minimize impact."
+    comment: "ZFS: Scrub operations"
+    enabled: true
+
+  - name: "zfs_vdev_async_write_min_active"
+    type: "ZFS"
+    value: "4"
+    description: "Minimum async writes for SSD performance."
+    comment: "ZFS: Minimum async writes"
+    enabled: true
+
+  - name: "zfs_vdev_aggregation_limit"
+    type: "ZFS"
+    value: "1048576"
+    description: "1MB I/O aggregation for better throughput."
+    comment: "ZFS: I/O aggregation limit"
+    enabled: true
+
+  - name: "zfs_prefetch_disable"
+    type: "ZFS"
+    value: "0"
+    description: "Enable prefetch for sequential workloads."
+    comment: "ZFS: Prefetch enable"
+    enabled: true
+
+  - name: "zfs_resilver_min_time_ms"
+    type: "ZFS"
+    value: "3000"
+    description: "Minimum resilver time per transaction group."
+    comment: "ZFS: Resilver minimum time"
+    enabled: true
+
+  - name: "zfs_deadman_synctime_ms"
+    type: "ZFS"
+    value: "120000"
+    description: "120 second deadman timer for hung I/O detection."
+    comment: "ZFS: Deadman sync time"
+    enabled: true
+
+  - name: "zfs_deadman_ziotime_ms"
+    type: "ZFS"
+    value: "300000"
+    description: "300 second timeout for individual I/Os."
+    comment: "ZFS: Deadman ZIO time"
+    enabled: true
+
+
+  - name: "l2arc_write_max"
+    type: "ZFS"
+    value: "134217728"
+    description: "128MB/s L2ARC write speed (if L2ARC present)."
+    comment: "ZFS: L2ARC write speed"
+    enabled: true
+
+  - name: "l2arc_headroom"
+    type: "ZFS"
+    value: "8"
+    description: "L2ARC headroom multiplier."
+    comment: "ZFS: L2ARC headroom"
+    enabled: true
+
+  - name: "l2arc_noprefetch"
+    type: "ZFS"
+    value: "0"
+    description: "Allow L2ARC prefetch."
+    comment: "ZFS: L2ARC prefetch enable"
+    enabled: true
+
+  - name: "zfs_multihost_interval"
+    type: "ZFS"
+    value: "1000"
+    description: "Multihost heartbeat interval (milliseconds)."
+    comment: "ZFS: Multihost interval"
+    enabled: true
+
+  - name: "zfs_multihost_fail_intervals"
+    type: "ZFS"
+    value: "10"
+    description: "Heartbeat failures before pool suspension."
+    comment: "ZFS: Multihost fail intervals"
+    enabled: true
+
+  - name: "spa_asize_inflation"
+    type: "ZFS"
+    value: "24"
+    description: "Account for metadata overhead in space calculations."
+    comment: "ZFS: SPA size inflation"
+    enabled: true
+
+  - name: "zfs_admin_snapshot"
+    type: "ZFS"
+    value: "1"
+    description: "Allow non-root snapshot administration for containers."
+    comment: "ZFS: Admin snapshot enable"
+    enabled: true
+
+  - name: "zfs_flags"
+    type: "ZFS"
+    value: "0"
+    description: "Default ZFS module flags."
+    comment: "ZFS: Module flags"
+    enabled: true
+
+  - name: "zvol_request_sync"
+    type: "ZFS"
+    value: "0"
+    description: "Async zvol requests for container performance."
+    comment: "ZFS: Zvol async requests"
+    enabled: true
+
+  - name: "zvol_threads"
+    type: "ZFS"
+    value: "32"
+    description: "Worker threads for zvol operations."
+    comment: "ZFS: Zvol worker threads"
+    enabled: true
+
+  - name: "zvol_max_discard_blocks"
+    type: "ZFS"
+    value: "16384"
+    description: "Maximum blocks per discard operation."
+    comment: "ZFS: Zvol max discard blocks"
+    enabled: true
+
+  - name: "zfetch_max_distance"
+    type: "ZFS"
+    value: "67108864"
+    description: "64MB max distance for predictive prefetch. Balances RAM usage with sequential performance."
+    comment: "ZFS: Prefetch max distance"
+    enabled: true
+
+  - name: "metaslab_lba_weighting_enabled"
+    type: "ZFS"
+    value: "1"
+    description: "Enable LBA weighting to reduce fragmentation on HDDs by preferring lower LBAs."
+    comment: "ZFS: Metaslab LBA weighting"
+    enabled: true

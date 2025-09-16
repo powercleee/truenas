@@ -1,0 +1,13 @@
+---
+# Test variables for single tunable
+performance_tunables:
+  - name: "net.core.rmem_max"
+    type: "SYSCTL"
+    value: "134217728"
+    description: "128MB max receive buffer for 10GbE performance"
+    comment: "Test: Network receive buffer"
+    enabled: true
+
+# Faster testing with shorter timeouts
+tunable_job_timeout: 60
+tunable_poll_interval: 2

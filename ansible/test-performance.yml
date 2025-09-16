@@ -1,0 +1,57 @@
+---
+- name: Test Performance Role with Single Tunable
+  hosts: localhost
+  become: false
+  gather_facts: true
+  connection: local
+  vars:
+    # Use environment variable for API key
+    truenas_api_key: "{{ lookup('env', 'TRUENAS_API_KEY') }}"
+
+    # Override with just one tunable for testing
+    performance_tunables:
+      - name: "vm.swappiness"
+        type: "SYSCTL"
+        value: "1"
+        description: "Test tunable - minimizes swap usage"
+        comment: "Performance test: VM swappiness"
+        enabled: true
+
+  pre_tasks:
+    - name: Check TRUENAS_API_KEY environment variable
+      fail:
+        msg: "TRUENAS_API_KEY environment variable is not set"
+      when: truenas_api_key == ""
+
+    - name: Verify TrueNAS API connectivity
+      uri:
+        url: "{{ truenas_api_url }}/system/info"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        status_code: [200]
+        validate_certs: "{{ truenas_validate_certs }}"
+      register: api_test
+
+    - name: Display test information
+      debug:
+        msg:
+          - "Testing performance role with single tunable"
+          - "TrueNAS Host: {{ ansible_host }}"
+          - "Test tunable: {{ performance_tunables[0].name }}"
+          - "Type: {{ performance_tunables[0].type }}"
+          - "Value: {{ performance_tunables[0].value }}"
+
+  roles:
+    - role: performance
+      tags:
+        - performance
+        - test
+
+  post_tasks:
+    - name: Display test completion
+      debug:
+        msg:
+          - "Performance role test completed!"
+          - "Check /tmp/truenas_performance_report.txt for details"
+          - "Verify tunable was created in TrueNAS Web UI"

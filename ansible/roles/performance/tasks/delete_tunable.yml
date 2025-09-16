@@ -1,0 +1,49 @@
+---
+# Delete existing tunable task with job monitoring
+# This task handles the deletion of a single tunable and waits for completion
+
+- name: "Delete tunable: {{ tunable_to_delete.var }}"
+  uri:
+    url: "{{ truenas_api_url }}/tunable/id/{{ tunable_to_delete.id }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: [200, 204]
+    validate_certs: "{{ truenas_validate_certs }}"
+  register: delete_result
+  failed_when: false
+
+- name: "Handle job monitoring for tunable deletion: {{ tunable_to_delete.var }}"
+  block:
+    - name: "Check if deletion created a job: {{ tunable_to_delete.var }}"
+      set_fact:
+        deletion_job_id: "{{ delete_result.json if delete_result.json is number else none }}"
+      when:
+        - delete_result.status == 200
+        - delete_result.json is defined
+        - delete_result.json is number
+
+    - name: "Monitor deletion job completion: {{ tunable_to_delete.var }}"
+      include_tasks: monitor_job.yml
+      vars:
+        job_id: "{{ deletion_job_id }}"
+        operation_name: "delete tunable {{ tunable_to_delete.var }} ({{ tunable_to_delete.type }})"
+      when: deletion_job_id is defined and deletion_job_id is not none
+
+    - name: "Log successful deletion: {{ tunable_to_delete.var }}"
+      debug:
+        msg: "Successfully deleted tunable: {{ tunable_to_delete.var }} ({{ tunable_to_delete.type }})"
+      when: delete_result.status in [200, 204]
+
+  rescue:
+    - name: "Handle deletion failure: {{ tunable_to_delete.var }}"
+      debug:
+        msg:
+          - "Failed to delete tunable: {{ tunable_to_delete.var }}"
+          - "Status: {{ delete_result.status | default('unknown') }}"
+          - "Error: {{ delete_result.json.message | default('Unknown error') }}"
+      when: delete_result.status is defined
+
+    - name: "Continue on deletion failure: {{ tunable_to_delete.var }}"
+      debug:
+        msg: "Continuing despite deletion failure - tunable may not exist or be locked"

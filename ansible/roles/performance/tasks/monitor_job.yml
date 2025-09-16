@@ -1,0 +1,89 @@
+---
+# Job monitoring task for TrueNAS async operations
+# This task polls a job until completion or timeout
+
+- name: "Initialize job monitoring: {{ operation_name }}"
+  set_fact:
+    job_completed: false
+    job_success: false
+    poll_count: 0
+    max_polls: "{{ 60 if 'ZFS' in operation_name else 20 }}"  # All tunables need reasonable timeout due to job queue
+
+- name: "Monitor job progress: {{ operation_name }} (ID: {{ job_id }})"
+  block:
+    - name: "Poll job status: {{ operation_name }}"
+      uri:
+        url: "{{ truenas_api_url }}/core/get_jobs?id={{ job_id | int }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ truenas_api_key }}"
+        status_code: [200]
+        validate_certs: "{{ truenas_validate_certs }}"
+      register: job_status
+      until:
+        - job_status.json is defined
+        - job_status.json | length > 0
+        - job_status.json[0].state in ['SUCCESS', 'FAILED', 'ABORTED']
+      retries: "{{ max_polls }}"
+      delay: "{{ 5 if 'ZFS' in operation_name else 3 }}"  # Reasonable delays for all operations
+      failed_when: false
+
+    - name: "Debug job status response: {{ operation_name }}"
+      debug:
+        msg:
+          - "Job {{ job_id }} status response:"
+          - "Response length: {{ job_status.json | length | default(0) }}"
+          - "First job state: {{ job_status.json[0].state | default('undefined') }}"
+          - "First job progress: {{ job_status.json[0].progress | default('undefined') }}"
+      when:
+        - job_status.json is defined
+        - job_status.json | length > 0
+
+    - name: "Check job completion status: {{ operation_name }}"
+      set_fact:
+        job_completed: true
+        job_success: "{{ job_status.json[0].state == 'SUCCESS' }}"
+        job_state: "{{ job_status.json[0].state }}"
+        job_progress: "{{ job_status.json[0].progress | default({}) }}"
+      when:
+        - job_status.json is defined
+        - job_status.json | length > 0
+
+    - name: "Display job completion: {{ operation_name }}"
+      debug:
+        msg:
+          - "Job {{ job_id }} completed: {{ operation_name }}"
+          - "Final state: {{ job_state }}"
+          - "Progress: {{ job_progress.description | default('No description') }}"
+          - "Percent complete: {{ job_progress.percent | default(100) }}%"
+      when: job_completed
+
+    - name: "Handle job failure: {{ operation_name }}"
+      fail:
+        msg:
+          - "Job failed: {{ operation_name }} (ID: {{ job_id }})"
+          - "State: {{ job_state }}"
+          - "Error: {{ job_status.json[0].error | default('Unknown error') }}"
+          - "Progress: {{ job_progress.description | default('No description') }}"
+      when:
+        - job_completed
+        - not job_success
+        - job_state == 'FAILED'
+
+  rescue:
+    - name: "Handle job monitoring timeout: {{ operation_name }}"
+      debug:
+        msg:
+          - "Job monitoring timed out: {{ operation_name }} (ID: {{ job_id }})"
+          - "Timeout: {{ tunable_job_timeout }} seconds"
+          - "Last known state: {{ job_status.json[0].state | default('UNKNOWN') }}"
+          - "This may indicate a slow operation - check TrueNAS GUI for status"
+
+    - name: "Fail on job timeout: {{ operation_name }}"
+      fail:
+        msg: "Job monitoring timed out for: {{ operation_name }} (ID: {{ job_id }})"
+      when:
+        - job_status.json is defined
+        - job_status.json | length > 0
+        - job_status.json[0].state not in ['SUCCESS']
+        - job_status.json[0].state != 'FAILED'  # Don't fail timeout if job actually failed

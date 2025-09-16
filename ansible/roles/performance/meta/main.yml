@@ -1,0 +1,24 @@
+---
+galaxy_info:
+  author: TrueNAS Infrastructure Team
+  description: Performance tuning role for TrueNAS SCALE
+  company: Infrastructure as Code
+  license: MIT
+  min_ansible_version: 2.15.0
+  platforms:
+    - name: TrueNAS
+      versions:
+        - 25.10
+  galaxy_tags:
+    - truenas
+    - scale
+    - performance
+    - tuning
+    - zfs
+    - networking
+    - containers
+
+dependencies: []
+
+collections:
+  - community.general

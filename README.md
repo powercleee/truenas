@@ -32,6 +32,13 @@ The repository implements a three-stage setup process:
 - Media/bulk data: 12-hour snapshots, 30-day retention
 - Uses TrueNAS API for native snapshot management
 
+#### 4. Performance Tuning
+- Applies 75+ system tunables optimized for container workloads
+- Memory management tuned for 192GB RAM systems
+- Network optimization for 10GbE performance
+- ZFS ARC sizing and I/O optimization
+- Uses TrueNAS API with job system for reliable configuration
+
 ## Service Categories and Structure
 
 The scripts manage 61 services organized into:
@@ -74,6 +81,8 @@ This project uses the **TrueNAS SCALE Middleware API** for:
 - ZFS dataset operations (`/api/v2.0/pool/dataset`)
 - File system permissions (`/api/v2.0/filesystem/setperm`)
 - Snapshot task management (`/api/v2.0/pool/snapshottask`)
+- System tunable configuration (`/api/v2.0/tunable`)
+- Job monitoring and async operations (`/api/v2.0/core/get_jobs`)
 
 **Setup:**
 
@@ -142,6 +151,37 @@ The system uses **TrueNAS API** for native snapshot management with optimized sc
 | **media** | Weekly (Sunday) | 4 weeks | Large media files |
 | **backups** | Weekly (Monday) | 8 weeks | Backup repositories |
 
+## Performance Tuning
+
+The system applies **75+ performance tunables** optimized for container workloads on TrueNAS SCALE systems with high-end hardware:
+
+### Memory Management
+- **VM Optimization**: Minimal swap usage, optimized dirty page handling
+- **Shared Memory**: 96GB configured for database containers
+- **ZFS ARC**: 153GB (80% of 192GB RAM) with intelligent metadata caching
+
+### Network Performance
+- **10GbE Optimization**: 128MB TCP buffers, BBR congestion control
+- **Container Networking**: Expanded port ranges, optimized ARP caches
+- **High-throughput**: Increased network device backlogs and socket queues
+
+### ZFS Optimization
+- **ARC Tuning**: Intelligent memory allocation with 8GB minimum
+- **I/O Scheduling**: Optimized async/sync operations per vdev
+- **Transaction Groups**: Reduced timeout for better responsiveness
+- **Prefetch**: Configured for sequential workload performance
+
+### Container Support
+- **File Handles**: Increased limits for containerized services
+- **Async I/O**: Expanded operations for database performance
+- **File Monitoring**: Enhanced inotify for container file systems
+
+**Configuration Management:**
+- Uses delete-and-recreate strategy for idempotency
+- Leverages TrueNAS job system for reliable async operations
+- Generates performance report with validation commands
+- Separate SYSCTL (immediate) and ZFS (reboot required) tunables
+
 
 ## Verification Commands
 
@@ -157,6 +197,15 @@ zfs list -t snapshot
 
 # Check TrueNAS API snapshot tasks
 curl -H "Authorization: Bearer $API_KEY" https://truenas-ip/api/v2.0/pool/snapshottask
+
+# Verify performance tunables
+curl -H "Authorization: Bearer $API_KEY" https://truenas-ip/api/v2.0/tunable
+
+# Check current SYSCTL values
+sysctl vm.swappiness vm.dirty_ratio net.core.rmem_max
+
+# Monitor ZFS ARC usage
+arc_summary
 
 ```
 
@@ -196,6 +245,12 @@ services:
 - `POST /api/v2.0/pool/snapshottask` - Create snapshot tasks
 - `PUT /api/v2.0/pool/snapshottask/id/{id}` - Update snapshot tasks
 
+### Performance Tunables
+- `GET /api/v2.0/tunable` - List system tunables
+- `POST /api/v2.0/tunable` - Create system tunables
+- `DELETE /api/v2.0/tunable/id/{id}` - Delete tunables
+- `POST /api/v2.0/core/get_jobs` - Monitor async job completion
+
 ## Benefits of API Integration
 
 1. **No Direct System Access**: Operations use HTTPS API calls instead of SSH
@@ -230,7 +285,8 @@ services:
     │   ├── users/                             # User management via API
     │   ├── datasets/                          # Dataset creation via API
     │   ├── snapshots/                         # Snapshot configuration via API
-    │   └── security/                          # Security hardening via API
+    │   ├── security/                          # Security hardening via API
+    │   └── performance/                       # Performance tuning via API
     └── templates/                             # Deployment documentation
 ```
 
